@@ -1,0 +1,21 @@
+# Copiar este archivo a terraform.tfvars y ajustar los valores.
+# NUNCA versionar terraform.tfvars si contiene valores sensibles.
+
+aws_region             = "us-east-1"
+project_name           = "connect-demo"
+environment            = "sandbox"
+
+# Debe ser único globalmente en AWS
+connect_instance_alias = "connect-demo-sandbox"
+
+bedrock_model_id       = "anthropic.claude-3-sonnet-20240229-v1:0"
+
+retail_queue_name      = "RetailQueue"
+banking_queue_name     = "BankingQueue"
+
+log_retention_days     = 7
+
+# Dejar vacío para no recibir emails de alarmas
+alarm_email            = ""
+
+agent_username         = "demo-agent"

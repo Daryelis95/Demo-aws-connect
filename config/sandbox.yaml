@@ -1,0 +1,71 @@
+# =============================================================================
+# Configuración del ambiente sandbox
+# Este archivo es solo referencia documentada. Los valores de Terraform
+# se definen en infra/environments/sandbox/terraform.tfvars
+# =============================================================================
+
+project:
+  name: connect-demo
+  environment: sandbox
+
+aws:
+  region: us-east-1
+
+connect:
+  instance_alias: connect-demo-sandbox   # Debe ser único globalmente
+  inbound_calls_enabled: true
+  outbound_calls_enabled: false          # Activar solo si se necesita flujo proactivo
+  language: es-US
+  queues:
+    retail: RetailQueue
+    banking: BankingQueue
+  agent:
+    username: demo-agent
+    first_name: Demo
+    last_name: Agent
+
+bedrock:
+  model_id: anthropic.claude-3-sonnet-20240229-v1:0
+  idle_session_ttl_seconds: 600
+
+dynamodb:
+  table_name: connect-demo-sandbox-ConnectDemoData
+  billing_mode: PAY_PER_REQUEST
+
+observability:
+  log_retention_days: 7
+  enable_dashboard: true
+  alarm_email: ""          # Dejar vacío para no recibir emails
+
+# Datos ficticios — IDs usados por seed_data.sh
+seed_data:
+  retail:
+    customer_id: CUS-1001
+    customer_name: Laura Gómez
+    order_id: ORD-1001
+    order_status: DELAYED
+    original_delivery_date: "2026-10-03"
+    estimated_delivery_date: "2026-10-07"
+    delivery_address: "Av. Corrientes 1234, Buenos Aires"
+    delay_reason: Carrier delay
+
+  banking:
+    customer_id: CUS-2001
+    customer_name: Martín Fernández
+    card_id: CARD-4455
+    card_status: ACTIVE
+    transactions:
+      - txn_id: TXN-9001
+        merchant: Supermercado Norte
+        amount: 45.20
+        currency: USD
+        date: "2026-10-04"
+        status: APPROVED
+        suspicious: false
+      - txn_id: TXN-9002
+        merchant: Electronics Store
+        amount: 850.00
+        currency: USD
+        date: "2026-10-05"
+        status: APPROVED
+        suspicious: true
