@@ -1,0 +1,69 @@
+{
+  "Version": "2019-10-30",
+  "StartAction": "set-banking-queue",
+  "Metadata": {
+    "EntryPointPosition": {"x": 40, "y": 40},
+    "ActionMetadata": {
+      "set-banking-queue":         {"Position": {"x": 200, "y": 40}},
+      "transfer-to-banking-queue": {"Position": {"x": 400, "y": 40}},
+      "queue-error-disconnect":    {"Position": {"x": 400, "y": 200}},
+      "end":                       {"Position": {"x": 600, "y": 120}}
+    }
+  },
+  "Actions": [
+    {
+      "Identifier": "set-banking-queue",
+      "Type": "UpdateContactTargetQueue",
+      "Parameters": {
+        "QueueId": "${banking_queue_id}"
+      },
+      "Transitions": {
+        "NextAction": "transfer-to-banking-queue",
+        "Errors": [
+          {
+            "NextAction": "queue-error-disconnect",
+            "ErrorType": "NoMatchingError"
+          }
+        ],
+        "Conditions": []
+      }
+    },
+    {
+      "Identifier": "transfer-to-banking-queue",
+      "Type": "TransferContactToQueue",
+      "Parameters": {},
+      "Transitions": {
+        "NextAction": "end",
+        "Errors": [
+          {
+            "NextAction": "queue-error-disconnect",
+            "ErrorType": "QueueAtCapacity"
+          },
+          {
+            "NextAction": "queue-error-disconnect",
+            "ErrorType": "NoMatchingError"
+          }
+        ],
+        "Conditions": []
+      }
+    },
+    {
+      "Identifier": "queue-error-disconnect",
+      "Type": "MessageParticipant",
+      "Parameters": {
+        "Text": "Lo sentimos, no hay agentes disponibles. Por favor intente mas tarde."
+      },
+      "Transitions": {
+        "NextAction": "end",
+        "Errors": [],
+        "Conditions": []
+      }
+    },
+    {
+      "Identifier": "end",
+      "Type": "DisconnectParticipant",
+      "Parameters": {},
+      "Transitions": {}
+    }
+  ]
+}

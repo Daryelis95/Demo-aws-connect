@@ -57,221 +57,228 @@ locals {
 }
 
 # ------------------------------------------------------------------
-# Agente Bedrock
+# NOTA: Los recursos aws_bedrockagent_agent, action_groups y alias
+# han sido deshabilitados. La arquitectura ahora invoca Amazon Bedrock
+# directamente desde cada función Lambda usando boto3 (bedrock-runtime)
+# con el modelo anthropic.claude-3-sonnet-20240229-v1:0.
+#
+# Para reactivar el agente clásico, descomenta los bloques siguientes
+# y vuelve a ejecutar terraform apply.
 # ------------------------------------------------------------------
-resource "aws_bedrockagent_agent" "main" {
-  agent_name              = local.agent_name
-  description             = var.agent_description
-  agent_resource_role_arn = var.agentcore_execution_role_arn
-  foundation_model        = var.bedrock_model_id
-  instruction             = local.agent_instruction
-  idle_session_ttl_in_seconds = var.idle_session_ttl_seconds
 
-  tags = merge(var.tags, {
-    Name = local.agent_name
-  })
-}
-
-# ------------------------------------------------------------------
-# Grupo de acciones — Retail tools
-# ------------------------------------------------------------------
-resource "aws_bedrockagent_agent_action_group" "retail" {
-  agent_id          = aws_bedrockagent_agent.main.id
-  agent_version     = "DRAFT"
-  action_group_name = "RetailTools"
-  description       = "Herramientas para el dominio Retail: consulta y modificación de pedidos."
-
-  action_group_executor {
-    lambda = var.get_order_lambda_arn
-  }
-
-  api_schema {
-    payload = jsonencode({
-      openapi = "3.0.0"
-      info = {
-        title   = "Retail Tools API"
-        version = "1.0.0"
-      }
-      paths = {
-        "/get_order" = {
-          post = {
-            summary     = "Consulta el estado de un pedido."
-            operationId = "get_order"
-            requestBody = {
-              required = true
-              content = {
-                "application/json" = {
-                  schema = {
-                    type     = "object"
-                    required = ["order_id"]
-                    properties = {
-                      order_id = {
-                        type        = "string"
-                        description = "Identificador único del pedido (ej: ORD-1001)."
-                      }
-                    }
-                  }
-                }
-              }
-            }
-            responses = {
-              "200" = {
-                description = "Estado del pedido."
-                content = {
-                  "application/json" = {
-                    schema = { type = "object" }
-                  }
-                }
-              }
-            }
-          }
-        }
-        "/change_delivery_address" = {
-          post = {
-            summary     = "Actualiza la dirección de entrega de un pedido."
-            operationId = "change_delivery_address"
-            requestBody = {
-              required = true
-              content = {
-                "application/json" = {
-                  schema = {
-                    type     = "object"
-                    required = ["order_id", "new_address"]
-                    properties = {
-                      order_id = {
-                        type        = "string"
-                        description = "Identificador único del pedido."
-                      }
-                      new_address = {
-                        type        = "string"
-                        description = "Nueva dirección de entrega."
-                      }
-                    }
-                  }
-                }
-              }
-            }
-            responses = {
-              "200" = {
-                description = "Confirmación de actualización."
-                content = {
-                  "application/json" = {
-                    schema = { type = "object" }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    })
-  }
-}
+# resource "aws_bedrockagent_agent" "main" {
+#   agent_name              = local.agent_name
+#   description             = var.agent_description
+#   agent_resource_role_arn = var.agentcore_execution_role_arn
+#   foundation_model        = var.bedrock_model_id
+#   instruction             = local.agent_instruction
+#   idle_session_ttl_in_seconds = var.idle_session_ttl_seconds
+#
+#   tags = merge(var.tags, {
+#     Name = local.agent_name
+#   })
+# }
 
 # ------------------------------------------------------------------
-# Grupo de acciones — Banca tools
+# Grupo de acciones — Retail tools (DESHABILITADO)
 # ------------------------------------------------------------------
-resource "aws_bedrockagent_agent_action_group" "banking" {
-  agent_id          = aws_bedrockagent_agent.main.id
-  agent_version     = "DRAFT"
-  action_group_name = "BankingTools"
-  description       = "Herramientas para el dominio Banca: transacciones y bloqueo de tarjeta."
-
-  action_group_executor {
-    lambda = var.get_transactions_lambda_arn
-  }
-
-  api_schema {
-    payload = jsonencode({
-      openapi = "3.0.0"
-      info = {
-        title   = "Banking Tools API"
-        version = "1.0.0"
-      }
-      paths = {
-        "/get_transactions" = {
-          post = {
-            summary     = "Consulta los movimientos recientes de un cliente."
-            operationId = "get_transactions"
-            requestBody = {
-              required = true
-              content = {
-                "application/json" = {
-                  schema = {
-                    type     = "object"
-                    required = ["customer_id"]
-                    properties = {
-                      customer_id = {
-                        type        = "string"
-                        description = "Identificador único del cliente (ej: CUS-2001)."
-                      }
-                    }
-                  }
-                }
-              }
-            }
-            responses = {
-              "200" = {
-                description = "Lista de movimientos recientes."
-                content = {
-                  "application/json" = {
-                    schema = { type = "object" }
-                  }
-                }
-              }
-            }
-          }
-        }
-        "/block_card" = {
-          post = {
-            summary     = "Bloquea una tarjeta bancaria."
-            operationId = "block_card"
-            requestBody = {
-              required = true
-              content = {
-                "application/json" = {
-                  schema = {
-                    type     = "object"
-                    required = ["card_id"]
-                    properties = {
-                      card_id = {
-                        type        = "string"
-                        description = "Identificador de la tarjeta (ej: CARD-4455)."
-                      }
-                    }
-                  }
-                }
-              }
-            }
-            responses = {
-              "200" = {
-                description = "Confirmación de bloqueo."
-                content = {
-                  "application/json" = {
-                    schema = { type = "object" }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    })
-  }
-}
+# resource "aws_bedrockagent_agent_action_group" "retail" {
+#   agent_id          = aws_bedrockagent_agent.main.id
+#   agent_version     = "DRAFT"
+#   action_group_name = "RetailTools"
+#   description       = "Herramientas para el dominio Retail: consulta y modificación de pedidos."
+#
+#   action_group_executor {
+#     lambda = var.get_order_lambda_arn
+#   }
+#
+#   api_schema {
+#     payload = jsonencode({
+#       openapi = "3.0.0"
+#       info = {
+#         title   = "Retail Tools API"
+#         version = "1.0.0"
+#       }
+#       paths = {
+#         "/get_order" = {
+#           post = {
+#             summary     = "Consulta el estado de un pedido."
+#             operationId = "get_order"
+#             requestBody = {
+#               required = true
+#               content = {
+#                 "application/json" = {
+#                   schema = {
+#                     type     = "object"
+#                     required = ["order_id"]
+#                     properties = {
+#                       order_id = {
+#                         type        = "string"
+#                         description = "Identificador único del pedido (ej: ORD-1001)."
+#                       }
+#                     }
+#                   }
+#                 }
+#               }
+#             }
+#             responses = {
+#               "200" = {
+#                 description = "Estado del pedido."
+#                 content = {
+#                   "application/json" = {
+#                     schema = { type = "object" }
+#                   }
+#                 }
+#               }
+#             }
+#           }
+#         }
+#         "/change_delivery_address" = {
+#           post = {
+#             summary     = "Actualiza la dirección de entrega de un pedido."
+#             operationId = "change_delivery_address"
+#             requestBody = {
+#               required = true
+#               content = {
+#                 "application/json" = {
+#                   schema = {
+#                     type     = "object"
+#                     required = ["order_id", "new_address"]
+#                     properties = {
+#                       order_id = {
+#                         type        = "string"
+#                         description = "Identificador único del pedido."
+#                       }
+#                       new_address = {
+#                         type        = "string"
+#                         description = "Nueva dirección de entrega."
+#                       }
+#                     }
+#                   }
+#                 }
+#               }
+#             }
+#             responses = {
+#               "200" = {
+#                 description = "Confirmación de actualización."
+#                 content = {
+#                   "application/json" = {
+#                     schema = { type = "object" }
+#                   }
+#                 }
+#               }
+#             }
+#           }
+#         }
+#       }
+#     })
+#   }
+# }
 
 # ------------------------------------------------------------------
-# Alias del agente — apunta a la versión DRAFT para sandbox
+# Grupo de acciones — Banca tools (DESHABILITADO)
 # ------------------------------------------------------------------
-resource "aws_bedrockagent_agent_alias" "sandbox" {
-  agent_id         = aws_bedrockagent_agent.main.id
-  agent_alias_name = "${local.prefix}-alias"
-  description      = "Alias de sandbox para el agente de la demo Connect."
+# resource "aws_bedrockagent_agent_action_group" "banking" {
+#   agent_id          = aws_bedrockagent_agent.main.id
+#   agent_version     = "DRAFT"
+#   action_group_name = "BankingTools"
+#   description       = "Herramientas para el dominio Banca: transacciones y bloqueo de tarjeta."
+#
+#   action_group_executor {
+#     lambda = var.get_transactions_lambda_arn
+#   }
+#
+#   api_schema {
+#     payload = jsonencode({
+#       openapi = "3.0.0"
+#       info = {
+#         title   = "Banking Tools API"
+#         version = "1.0.0"
+#       }
+#       paths = {
+#         "/get_transactions" = {
+#           post = {
+#             summary     = "Consulta los movimientos recientes de un cliente."
+#             operationId = "get_transactions"
+#             requestBody = {
+#               required = true
+#               content = {
+#                 "application/json" = {
+#                   schema = {
+#                     type     = "object"
+#                     required = ["customer_id"]
+#                     properties = {
+#                       customer_id = {
+#                         type        = "string"
+#                         description = "Identificador único del cliente (ej: CUS-2001)."
+#                       }
+#                     }
+#                   }
+#                 }
+#               }
+#             }
+#             responses = {
+#               "200" = {
+#                 description = "Lista de movimientos recientes."
+#                 content = {
+#                   "application/json" = {
+#                     schema = { type = "object" }
+#                   }
+#                 }
+#               }
+#             }
+#           }
+#         }
+#         "/block_card" = {
+#           post = {
+#             summary     = "Bloquea una tarjeta bancaria."
+#             operationId = "block_card"
+#             requestBody = {
+#               required = true
+#               content = {
+#                 "application/json" = {
+#                   schema = {
+#                     type     = "object"
+#                     required = ["card_id"]
+#                     properties = {
+#                       card_id = {
+#                         type        = "string"
+#                         description = "Identificador de la tarjeta (ej: CARD-4455)."
+#                       }
+#                     }
+#                   }
+#                 }
+#               }
+#             }
+#             responses = {
+#               "200" = {
+#                 description = "Confirmación de bloqueo."
+#                 content = {
+#                   "application/json" = {
+#                     schema = { type = "object" }
+#                   }
+#                 }
+#               }
+#             }
+#           }
+#         }
+#       }
+#     })
+#   }
+# }
 
-  tags = var.tags
-
-  depends_on = [
-    aws_bedrockagent_agent_action_group.retail,
-    aws_bedrockagent_agent_action_group.banking
-  ]
-}
+# ------------------------------------------------------------------
+# Alias del agente (DESHABILITADO)
+# ------------------------------------------------------------------
+# resource "aws_bedrockagent_agent_alias" "sandbox" {
+#   agent_id         = aws_bedrockagent_agent.main.id
+#   agent_alias_name = "${local.prefix}-alias"
+#   description      = "Alias de sandbox para el agente de la demo Connect."
+#
+#   tags = var.tags
+#
+#   depends_on = [
+#     aws_bedrockagent_agent_action_group.retail,
+#     aws_bedrockagent_agent_action_group.banking
+#   ]
+# }

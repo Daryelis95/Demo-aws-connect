@@ -41,6 +41,7 @@ htmlcov/
 # Lambda zips generados
 src/tools/**/*.zip
 src/agent/**/*.zip
+infra/modules/lambda/.build/
 
 # macOS
 .DS_Store

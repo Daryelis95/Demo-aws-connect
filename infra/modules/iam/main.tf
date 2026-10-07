@@ -73,6 +73,28 @@ resource "aws_iam_policy" "lambda_dynamodb" {
   tags = var.tags
 }
 
+# Política: invocar modelos de Amazon Bedrock directamente (bedrock-runtime)
+resource "aws_iam_policy" "lambda_bedrock" {
+  name        = "${local.prefix}-lambda-bedrock-policy"
+  description = "Permite a las Lambdas invocar modelos de Amazon Bedrock via bedrock-runtime."
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "bedrock:InvokeModel",
+          "bedrock:InvokeModelWithResponseStream"
+        ]
+        Resource = "arn:aws:bedrock:${var.aws_region}::foundation-model/*"
+      }
+    ]
+  })
+
+  tags = var.tags
+}
+
 # Adjuntar políticas al rol Lambda
 resource "aws_iam_role_policy_attachment" "lambda_cloudwatch" {
   role       = aws_iam_role.lambda_execution.name
@@ -82,6 +104,11 @@ resource "aws_iam_role_policy_attachment" "lambda_cloudwatch" {
 resource "aws_iam_role_policy_attachment" "lambda_dynamodb" {
   role       = aws_iam_role.lambda_execution.name
   policy_arn = aws_iam_policy.lambda_dynamodb.arn
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_bedrock" {
+  role       = aws_iam_role.lambda_execution.name
+  policy_arn = aws_iam_policy.lambda_bedrock.arn
 }
 
 # ------------------------------------------------------------------

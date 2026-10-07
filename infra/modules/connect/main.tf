@@ -2,20 +2,7 @@
 # NOTA DE SOPORTE TERRAFORM
 #
 # El provider hashicorp/aws >= 5.x incluye soporte para los recursos
-# principales de Amazon Connect:
-#   aws_connect_instance           ✅ Soportado
-#   aws_connect_queue              ✅ Soportado
-#   aws_connect_routing_profile    ✅ Soportado
-#   aws_connect_security_profile   ✅ Soportado
-#   aws_connect_user               ✅ Soportado
-#   aws_connect_contact_flow       ✅ Soportado
-#   aws_connect_hours_of_operation ✅ Soportado
-#   aws_connect_lambda_function_association ✅ Soportado
-#
-# Limitaciones conocidas:
-#   - La reclamación de números telefónicos puede requerir pasos
-#     manuales o disponibilidad limitada en sandbox.
-#   - La publicación de Contact Flows puede requerir validación manual.
+# principales de Amazon Connect.
 # ------------------------------------------------------------------
 
 locals {
@@ -187,6 +174,7 @@ resource "aws_connect_routing_profile" "main" {
 resource "aws_connect_user" "demo_agent" {
   instance_id        = aws_connect_instance.main.id
   name               = var.agent_username
+  password           = "DemoPassword123!"
   routing_profile_id = aws_connect_routing_profile.main.routing_profile_id
   security_profile_ids = [
     aws_connect_security_profile.agent.security_profile_id
@@ -197,8 +185,6 @@ resource "aws_connect_user" "demo_agent" {
     last_name  = var.agent_last_name
   }
 
-  # Contraseña inicial — debe cambiarse después del primer login
-  # No se versiona en el código: se pasa como variable sensible
   phone_config {
     phone_type = "SOFT_PHONE"
   }
@@ -208,8 +194,6 @@ resource "aws_connect_user" "demo_agent" {
 
 # ------------------------------------------------------------------
 # Contact Flow — Retail
-# Nota: el contenido JSON del flow es la representación del flujo
-# de Amazon Connect. En sandbox se despliega en estado DRAFT.
 # ------------------------------------------------------------------
 resource "aws_connect_contact_flow" "retail" {
   instance_id = aws_connect_instance.main.id
@@ -217,52 +201,8 @@ resource "aws_connect_contact_flow" "retail" {
   description = "Contact flow para el dominio Retail (consulta y modificación de pedidos)."
   type        = "CONTACT_FLOW"
 
-  content = jsonencode({
-    Version     = "2019-10-30"
-    StartAction = "invoke-agent"
-    Actions = [
-      {
-        Identifier = "invoke-agent"
-        Type       = "InvokeLambdaFunction"
-        Parameters = {
-          LambdaFunctionARN = {
-            DisplayName = "get-order"
-            ReferencedNodeId = "invoke-agent"
-            Type = "ARN"
-            Value = var.get_order_lambda_arn
-          }
-          InvocationTimeLimitSeconds = "8"
-        }
-        Transitions = {
-          NextAction = "transfer-to-queue"
-          Errors     = []
-          Conditions = []
-        }
-      },
-      {
-        Identifier = "transfer-to-queue"
-        Type       = "TransferToQueue"
-        Parameters = {
-          QueueId = {
-            DisplayName      = var.retail_queue_name
-            ReferencedNodeId = "transfer-to-queue"
-            Type             = "QueueArn"
-            Value            = aws_connect_queue.retail.arn
-          }
-        }
-        Transitions = {
-          NextAction = "end"
-          Errors     = []
-          Conditions = []
-        }
-      },
-      {
-        Identifier  = "end"
-        Type        = "DisconnectParticipant"
-        Parameters  = {}
-        Transitions = {}
-      }
-    ]
+  content = templatefile("${path.module}/flows/retail.json", {
+    retail_queue_id = aws_connect_queue.retail.queue_id
   })
 
   tags = merge(var.tags, {
@@ -279,52 +219,8 @@ resource "aws_connect_contact_flow" "banking" {
   description = "Contact flow para el dominio Banca (transacciones y bloqueo de tarjeta)."
   type        = "CONTACT_FLOW"
 
-  content = jsonencode({
-    Version     = "2019-10-30"
-    StartAction = "invoke-agent"
-    Actions = [
-      {
-        Identifier = "invoke-agent"
-        Type       = "InvokeLambdaFunction"
-        Parameters = {
-          LambdaFunctionARN = {
-            DisplayName      = "get-transactions"
-            ReferencedNodeId = "invoke-agent"
-            Type             = "ARN"
-            Value            = var.get_transactions_lambda_arn
-          }
-          InvocationTimeLimitSeconds = "8"
-        }
-        Transitions = {
-          NextAction = "transfer-to-queue"
-          Errors     = []
-          Conditions = []
-        }
-      },
-      {
-        Identifier = "transfer-to-queue"
-        Type       = "TransferToQueue"
-        Parameters = {
-          QueueId = {
-            DisplayName      = var.banking_queue_name
-            ReferencedNodeId = "transfer-to-queue"
-            Type             = "QueueArn"
-            Value            = aws_connect_queue.banking.arn
-          }
-        }
-        Transitions = {
-          NextAction = "end"
-          Errors     = []
-          Conditions = []
-        }
-      },
-      {
-        Identifier  = "end"
-        Type        = "DisconnectParticipant"
-        Parameters  = {}
-        Transitions = {}
-      }
-    ]
+  content = templatefile("${path.module}/flows/banking.json", {
+    banking_queue_id = aws_connect_queue.banking.queue_id
   })
 
   tags = merge(var.tags, {

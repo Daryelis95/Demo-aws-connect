@@ -1,7 +1,8 @@
 """
 Lambda: get_transactions
 Dominio: Banca
-Descripción: Consulta los movimientos recientes de un cliente desde DynamoDB.
+Descripción: Consulta los movimientos recientes de un cliente desde DynamoDB
+             y genera un análisis conversacional usando Amazon Bedrock (Claude 3 Sonnet).
 """
 
 import json
@@ -16,13 +17,62 @@ logger = logging.getLogger()
 logger.setLevel(os.environ.get("LOG_LEVEL", "INFO"))
 
 dynamodb = boto3.resource("dynamodb", region_name=os.environ.get("AWS_REGION_NAME", "us-east-1"))
-TABLE_NAME = os.environ["DYNAMODB_TABLE_NAME"]
+bedrock  = boto3.client("bedrock-runtime", region_name=os.environ.get("AWS_REGION_NAME", "us-east-1"))
+
+TABLE_NAME       = os.environ["DYNAMODB_TABLE_NAME"]
+BEDROCK_MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "anthropic.claude-3-sonnet-20240229-v1:0")
 
 
 def decimal_default(obj):
     if isinstance(obj, Decimal):
         return float(obj)
     raise TypeError(f"Tipo no serializable: {type(obj)}")
+
+
+def invoke_bedrock(customer_name: str, transactions: list) -> str:
+    """
+    Invoca Claude 3 Sonnet para generar un resumen de los movimientos bancarios,
+    destacando transacciones sospechosas si las hay.
+    """
+    suspicious = [t for t in transactions if t.get("suspicious")]
+
+    prompt = (
+        "Eres un asistente virtual de atención al cliente del dominio Banca. "
+        "Responde siempre en español, de forma concisa y profesional. "
+        "Nunca menciones números completos de tarjetas.\n\n"
+        f"Cliente: {customer_name}\n"
+        f"Movimientos recientes:\n{json.dumps(transactions, ensure_ascii=False, indent=2)}\n\n"
+    )
+
+    if suspicious:
+        prompt += (
+            f"Se detectaron {len(suspicious)} transacción(es) sospechosa(s). "
+            "Presenta los movimientos al cliente, destaca las transacciones sospechosas "
+            "y pregunta si las reconoce. No tomes ninguna acción sin confirmación explícita."
+        )
+    else:
+        prompt += (
+            "Presenta un resumen claro de los movimientos recientes al cliente. "
+            "No se detectaron transacciones sospechosas."
+        )
+
+    body = json.dumps({
+        "anthropic_version": "bedrock-2023-05-31",
+        "max_tokens": 768,
+        "messages": [
+            {"role": "user", "content": prompt}
+        ]
+    })
+
+    response = bedrock.invoke_model(
+        modelId=BEDROCK_MODEL_ID,
+        contentType="application/json",
+        accept="application/json",
+        body=body,
+    )
+
+    response_body = json.loads(response["body"].read())
+    return response_body["content"][0]["text"].strip()
 
 
 def lambda_handler(event, context):
@@ -34,26 +84,8 @@ def lambda_handler(event, context):
         {
             "customer_id": "CUS-2001",
             "customer_name": "Martín Fernández",
-            "transactions": [
-                {
-                    "txn_id": "TXN-9001",
-                    "merchant": "Supermercado Norte",
-                    "amount": 45.20,
-                    "currency": "USD",
-                    "date": "2026-10-04",
-                    "status": "APPROVED",
-                    "suspicious": false
-                },
-                {
-                    "txn_id": "TXN-9002",
-                    "merchant": "Electronics Store",
-                    "amount": 850.00,
-                    "currency": "USD",
-                    "date": "2026-10-05",
-                    "status": "APPROVED",
-                    "suspicious": true
-                }
-            ]
+            "transactions": [...],
+            "bedrock_response": "<análisis generado por Claude>"
         }
     """
     correlation_id = context.aws_request_id
@@ -79,7 +111,6 @@ def lambda_handler(event, context):
     table = dynamodb.Table(TABLE_NAME)
 
     try:
-        # Obtener perfil del cliente
         profile_response = table.get_item(
             Key={"PK": f"CUSTOMER#{customer_id}", "SK": "PROFILE"}
         )
@@ -91,7 +122,6 @@ def lambda_handler(event, context):
                 "body": {"error": f"Cliente {customer_id} no encontrado."}
             }
 
-        # Obtener transacciones: PK=CUSTOMER#<id> SK begins_with TXN#
         txn_response = table.query(
             KeyConditionExpression=(
                 Key("PK").eq(f"CUSTOMER#{customer_id}") &
@@ -113,24 +143,36 @@ def lambda_handler(event, context):
 
     formatted_txns = [
         {
-            "txn_id": t.get("txn_id"),
-            "merchant": t.get("merchant"),
-            "amount": float(t.get("amount", 0)),
-            "currency": t.get("currency", "USD"),
-            "date": t.get("date"),
-            "status": t.get("status"),
-            "suspicious": t.get("suspicious", False),
+            "txn_id":    t.get("txn_id"),
+            "merchant":  t.get("merchant"),
+            "amount":    float(t.get("amount", 0)),
+            "currency":  t.get("currency", "USD"),
+            "date":      t.get("date"),
+            "status":    t.get("status"),
+            "suspicious":t.get("suspicious", False),
         }
         for t in transactions
     ]
 
+    customer_name   = profile.get("name", customer_id)
+    suspicious_count = sum(1 for t in formatted_txns if t["suspicious"])
+
     result = {
-        "customer_id": customer_id,
-        "customer_name": profile.get("name"),
-        "transactions": formatted_txns,
+        "customer_id":   customer_id,
+        "customer_name": customer_name,
+        "transactions":  formatted_txns,
     }
 
-    suspicious_count = sum(1 for t in formatted_txns if t["suspicious"])
+    # --- Invocar Bedrock para generar análisis conversacional ---
+    try:
+        result["bedrock_response"] = invoke_bedrock(customer_name, formatted_txns)
+    except Exception as exc:
+        logger.warning(json.dumps({
+            "correlation_id": correlation_id,
+            "tool": "get_transactions",
+            "bedrock_warning": str(exc)
+        }))
+        result["bedrock_response"] = None
 
     logger.info(json.dumps({
         "correlation_id": correlation_id,

@@ -12,7 +12,7 @@ output "lambda_function_arns" {
   description = "ARNs de las funciones Lambda (tools)."
   value       = module.lambda.function_arns
 }
-
+/*
 output "bedrock_agent_id" {
   description = "ID del agente Bedrock."
   value       = module.agentcore.agent_id
@@ -22,7 +22,7 @@ output "bedrock_agent_alias_id" {
   description = "ID del alias del agente Bedrock para sandbox."
   value       = module.agentcore.agent_alias_id
 }
-
+*/
 output "connect_instance_id" {
   description = "ID de la instancia Amazon Connect."
   value       = module.connect.instance_id
