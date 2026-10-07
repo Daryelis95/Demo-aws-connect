@@ -53,6 +53,12 @@ variable "log_level" {
   default     = "INFO"
 }
 
+variable "bedrock_model_id" {
+  description = "ID del modelo de Amazon Bedrock usado para generar mensajes conversacionales."
+  type        = string
+  default     = "anthropic.claude-sonnet-4-6"
+}
+
 variable "tags" {
   description = "Tags comunes que se aplican a todas las funciones Lambda."
   type        = map(string)

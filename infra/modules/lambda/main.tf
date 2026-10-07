@@ -60,6 +60,7 @@ resource "aws_lambda_function" "tool" {
       ENVIRONMENT         = var.environment
       LOG_LEVEL           = var.log_level
       AWS_REGION_NAME     = var.aws_region
+      BEDROCK_MODEL_ID    = var.bedrock_model_id
     }
   }
 

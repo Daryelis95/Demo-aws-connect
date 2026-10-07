@@ -1,8 +1,32 @@
 """
 Lambda: block_card
 Dominio: Banca
-Descripción: Bloquea una tarjeta bancaria (ACTIVE → BLOCKED) en DynamoDB
-             y genera un mensaje de confirmación usando Amazon Bedrock (Claude 3 Sonnet).
+
+Descripción:
+Bloquea una tarjeta bancaria (ACTIVE -> BLOCKED) en DynamoDB.
+Compatible con Amazon Connect usando ResponseType=STRING_MAP.
+
+Entrada desde Amazon Connect:
+
+{
+    "Details": {
+        "Parameters": {
+            "cardId": "CARD-4455",
+            "action": "blockCard"
+        }
+    }
+}
+
+Respuesta hacia Amazon Connect:
+
+{
+    "success": "true",
+    "cardId": "CARD-4455",
+    "previousStatus": "ACTIVE",
+    "newStatus": "BLOCKED",
+    "blockedAt": "...",
+    "message": "..."
+}
 """
 
 import json
@@ -13,172 +37,437 @@ from datetime import datetime, timezone
 import boto3
 from boto3.dynamodb.conditions import Key
 
+
+# ============================================================
+# Logging
+# ============================================================
+
 logger = logging.getLogger()
 logger.setLevel(os.environ.get("LOG_LEVEL", "INFO"))
 
-dynamodb = boto3.resource("dynamodb", region_name=os.environ.get("AWS_REGION_NAME", "us-east-1"))
-bedrock  = boto3.client("bedrock-runtime", region_name=os.environ.get("AWS_REGION_NAME", "us-east-1"))
 
-TABLE_NAME       = os.environ["DYNAMODB_TABLE_NAME"]
-BEDROCK_MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "anthropic.claude-3-sonnet-20240229-v1:0")
+# ============================================================
+# AWS Clients
+# ============================================================
+
+AWS_REGION = os.environ.get("AWS_REGION_NAME", "us-east-1")
+
+dynamodb = boto3.resource(
+    "dynamodb",
+    region_name=AWS_REGION
+)
+
+bedrock = boto3.client(
+    "bedrock-runtime",
+    region_name=AWS_REGION
+)
+
+
+# ============================================================
+# Environment variables
+# ============================================================
+
+TABLE_NAME = os.environ["DYNAMODB_TABLE_NAME"]
+
+BEDROCK_MODEL_ID = os.environ.get(
+    "BEDROCK_MODEL_ID",
+    "anthropic.claude-sonnet-4-6"
+)
+
 
 BLOCKABLE_STATUSES = {"ACTIVE"}
 
 
-def invoke_bedrock(card_suffix: str, blocked_at: str) -> str:
+# ============================================================
+# Helpers
+# ============================================================
+
+def connect_response(
+    success,
+    card_id="",
+    previous_status="",
+    new_status="",
+    blocked_at="",
+    message="",
+    error=""
+):
     """
-    Invoca Claude 3 Sonnet para generar un mensaje de confirmación del bloqueo
-    de la tarjeta. Nunca expone el número completo de la tarjeta.
+    Amazon Connect STRING_MAP requiere:
+    - JSON plano
+    - sin objetos anidados
+    - todos los valores deben ser strings
     """
+
+    return {
+        "success": str(success).lower(),
+        "cardId": str(card_id or ""),
+        "previousStatus": str(previous_status or ""),
+        "newStatus": str(new_status or ""),
+        "blockedAt": str(blocked_at or ""),
+        "message": str(message or ""),
+        "error": str(error or "")
+    }
+
+
+def get_parameters(event):
+    """
+    Permite ejecutar la Lambda tanto desde Amazon Connect
+    como manualmente desde la consola de Lambda.
+    """
+
+    # Amazon Connect
+    details = event.get("Details", {})
+
+    if isinstance(details, dict):
+        parameters = details.get("Parameters", {})
+
+        if parameters:
+            return parameters
+
+    # Ejecución directa para testing
+    return event
+
+
+def invoke_bedrock(card_suffix, blocked_at):
+    """
+    Genera un mensaje conversacional de confirmación.
+
+    Nunca envía el número completo de la tarjeta a Bedrock.
+    """
+
     prompt = (
-        "Eres un asistente virtual de atención al cliente del dominio Banca. "
-        "Responde siempre en español, de forma concisa y profesional. "
+        "Eres un asistente virtual de atención al cliente de un banco. "
+        "Responde siempre en español, de forma breve, clara y profesional. "
         "Nunca menciones números completos de tarjetas.\n\n"
-        f"Se bloqueó exitosamente la tarjeta terminada en {card_suffix} "
-        f"el {blocked_at}.\n\n"
-        "Genera un mensaje de confirmación claro para el cliente indicando que la "
-        "tarjeta fue bloqueada, que ya no podrá ser utilizada para nuevas transacciones, "
-        "y que puede contactar al banco para solicitar una tarjeta de reemplazo."
+        f"La tarjeta terminada en {card_suffix} fue bloqueada "
+        f"correctamente el {blocked_at}.\n\n"
+        "Genera un mensaje para comunicar al cliente que la tarjeta "
+        "fue bloqueada correctamente, que ya no podrá utilizarse para "
+        "nuevas transacciones y que puede solicitar una tarjeta de "
+        "reemplazo."
     )
 
-    body = json.dumps({
+    body = {
         "anthropic_version": "bedrock-2023-05-31",
-        "max_tokens": 256,
+        "max_tokens": 180,
+        "temperature": 0.2,
         "messages": [
-            {"role": "user", "content": prompt}
+            {
+                "role": "user",
+                "content": prompt
+            }
         ]
-    })
+    }
 
     response = bedrock.invoke_model(
         modelId=BEDROCK_MODEL_ID,
         contentType="application/json",
         accept="application/json",
-        body=body,
+        body=json.dumps(body)
     )
 
-    response_body = json.loads(response["body"].read())
+    response_body = json.loads(
+        response["body"].read()
+    )
+
     return response_body["content"][0]["text"].strip()
 
 
+# ============================================================
+# Lambda Handler
+# ============================================================
+
 def lambda_handler(event, context):
-    """
-    Entrada esperada:
-        {"card_id": "CARD-4455"}
 
-    Salida exitosa:
-        {
-            "card_id": "CARD-4455",
-            "previous_status": "ACTIVE",
-            "new_status": "BLOCKED",
-            "blocked_at": "2026-10-05T14:30:00Z",
-            "bedrock_response": "<confirmación generada por Claude>"
-        }
-
-    SEGURIDAD: Solo registra los últimos 4 dígitos de la tarjeta en logs.
-    """
     correlation_id = context.aws_request_id
-    card_id        = (event.get("card_id") or "").strip()
 
-    # Solo los últimos 4 dígitos en logs
-    card_suffix = card_id[-4:] if len(card_id) >= 4 else "????"
     logger.info(json.dumps({
         "correlation_id": correlation_id,
         "tool": "block_card",
+        "event_source": "amazon_connect"
+        if "Details" in event
+        else "direct"
+    }))
+
+    # --------------------------------------------------------
+    # Obtener parámetros
+    # --------------------------------------------------------
+
+    parameters = get_parameters(event)
+
+    card_id = (
+        parameters.get("cardId")
+        or parameters.get("card_id")
+        or ""
+    ).strip()
+
+    action = (
+        parameters.get("action")
+        or "blockCard"
+    ).strip()
+
+
+    # --------------------------------------------------------
+    # Validaciones
+    # --------------------------------------------------------
+
+    if not card_id:
+
+        logger.warning(json.dumps({
+            "correlation_id": correlation_id,
+            "error": "cardId requerido"
+        }))
+
+        return connect_response(
+            success=False,
+            error="El campo cardId es requerido.",
+            message="No pude identificar la tarjeta."
+        )
+
+
+    card_suffix = (
+        card_id[-4:]
+        if len(card_id) >= 4
+        else "????"
+    )
+
+
+    logger.info(json.dumps({
+        "correlation_id": correlation_id,
+        "tool": "block_card",
+        "action": action,
         "card_suffix": card_suffix
     }))
 
-    if not card_id:
-        return {
-            "statusCode": 400,
-            "body": {"error": "El campo card_id es requerido."}
-        }
+
+    if action != "blockCard":
+
+        return connect_response(
+            success=False,
+            card_id=card_id,
+            error=f"Acción no válida: {action}",
+            message="La operación solicitada no es válida."
+        )
+
+
+    # --------------------------------------------------------
+    # DynamoDB
+    # --------------------------------------------------------
 
     table = dynamodb.Table(TABLE_NAME)
 
+
     try:
+
         response = table.query(
             IndexName="GSI1",
-            KeyConditionExpression=Key("GSI1PK").eq(f"CARD#{card_id}")
+            KeyConditionExpression=Key("GSI1PK").eq(
+                f"CARD#{card_id}"
+            )
         )
+
         items = response.get("Items", [])
+
     except Exception as exc:
-        logger.error(json.dumps({
+
+        logger.exception(json.dumps({
             "correlation_id": correlation_id,
             "tool": "block_card",
             "error": str(exc)
         }))
-        return {
-            "statusCode": 500,
-            "body": {"error": "Error consultando la base de datos."}
-        }
+
+        return connect_response(
+            success=False,
+            card_id=card_id,
+            error="DATABASE_ERROR",
+            message="No fue posible consultar la tarjeta."
+        )
+
+
+    # --------------------------------------------------------
+    # Tarjeta no encontrada
+    # --------------------------------------------------------
 
     if not items:
-        return {
-            "statusCode": 404,
-            "body": {"error": "Tarjeta no encontrada."}
-        }
 
-    item           = items[0]
-    pk             = item["PK"]
-    sk             = item["SK"]
-    current_status = item.get("status", "")
+        logger.warning(json.dumps({
+            "correlation_id": correlation_id,
+            "tool": "block_card",
+            "card_suffix": card_suffix,
+            "result": "not_found"
+        }))
+
+        return connect_response(
+            success=False,
+            card_id=card_id,
+            error="CARD_NOT_FOUND",
+            message="No se encontró la tarjeta indicada."
+        )
+
+
+    item = items[0]
+
+    pk = item["PK"]
+    sk = item["SK"]
+
+    current_status = item.get(
+        "status",
+        ""
+    )
+
+
+    # --------------------------------------------------------
+    # Validar estado
+    # --------------------------------------------------------
+
+    if current_status == "BLOCKED":
+
+        return connect_response(
+            success=True,
+            card_id=card_id,
+            previous_status="BLOCKED",
+            new_status="BLOCKED",
+            message=(
+                f"La tarjeta terminada en {card_suffix} "
+                "ya se encuentra bloqueada."
+            )
+        )
+
 
     if current_status not in BLOCKABLE_STATUSES:
-        return {
-            "statusCode": 409,
-            "body": {
-                "error": f"La tarjeta no puede ser bloqueada. Estado actual: {current_status}."
-            }
-        }
 
-    blocked_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        return connect_response(
+            success=False,
+            card_id=card_id,
+            previous_status=current_status,
+            new_status=current_status,
+            error="INVALID_CARD_STATUS",
+            message=(
+                "La tarjeta no puede ser bloqueada. "
+                f"Estado actual: {current_status}."
+            )
+        )
+
+
+    # --------------------------------------------------------
+    # Bloquear tarjeta
+    # --------------------------------------------------------
+
+    blocked_at = datetime.now(
+        timezone.utc
+    ).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
+
 
     try:
+
         table.update_item(
-            Key={"PK": pk, "SK": sk},
-            UpdateExpression="SET #s = :new_status, blocked_at = :ts",
-            ExpressionAttributeNames={"#s": "status"},
+
+            Key={
+                "PK": pk,
+                "SK": sk
+            },
+
+            UpdateExpression=(
+                "SET #s = :new_status, "
+                "blocked_at = :ts"
+            ),
+
+            ExpressionAttributeNames={
+                "#s": "status"
+            },
+
             ExpressionAttributeValues={
                 ":new_status": "BLOCKED",
-                ":ts":         blocked_at,
-                ":expected":   current_status,
+                ":ts": blocked_at,
+                ":expected": current_status
             },
-            # Escritura optimista: el estado no cambió entre la lectura y la escritura
-            ConditionExpression="#s = :expected"
+
+            ConditionExpression=(
+                "#s = :expected"
+            )
         )
+
+
     except dynamodb.meta.client.exceptions.ConditionalCheckFailedException:
-        return {
-            "statusCode": 409,
-            "body": {"error": "El estado de la tarjeta cambió durante la operación. Intenta nuevamente."}
-        }
+
+        logger.warning(json.dumps({
+            "correlation_id": correlation_id,
+            "tool": "block_card",
+            "result": "conditional_check_failed"
+        }))
+
+        return connect_response(
+            success=False,
+            card_id=card_id,
+            previous_status=current_status,
+            error="CARD_STATUS_CHANGED",
+            message=(
+                "El estado de la tarjeta cambió durante "
+                "la operación. Intenta nuevamente."
+            )
+        )
+
+
     except Exception as exc:
-        logger.error(json.dumps({
+
+        logger.exception(json.dumps({
             "correlation_id": correlation_id,
             "tool": "block_card",
             "error": str(exc)
         }))
-        return {
-            "statusCode": 500,
-            "body": {"error": "Error al bloquear la tarjeta."}
-        }
 
-    result = {
-        "card_id":         card_id,
-        "previous_status": current_status,
-        "new_status":      "BLOCKED",
-        "blocked_at":      blocked_at,
-    }
+        return connect_response(
+            success=False,
+            card_id=card_id,
+            previous_status=current_status,
+            error="BLOCK_CARD_ERROR",
+            message="No fue posible bloquear la tarjeta."
+        )
 
-    # --- Invocar Bedrock para generar confirmación conversacional ---
+
+    # --------------------------------------------------------
+    # Mensaje por defecto
+    # --------------------------------------------------------
+
+    message = (
+        f"La tarjeta terminada en {card_suffix} "
+        "fue bloqueada correctamente. "
+        "Ya no podrá utilizarse para nuevas transacciones. "
+        "Puedes solicitar una tarjeta de reemplazo."
+    )
+
+
+    # --------------------------------------------------------
+    # Bedrock
+    # --------------------------------------------------------
+
     try:
-        result["bedrock_response"] = invoke_bedrock(card_suffix, blocked_at)
+
+        bedrock_message = invoke_bedrock(
+            card_suffix,
+            blocked_at
+        )
+
+        if bedrock_message:
+            message = bedrock_message
+
+
     except Exception as exc:
+
+        # IMPORTANTE:
+        # Fallar Bedrock NO debe impedir el bloqueo.
         logger.warning(json.dumps({
             "correlation_id": correlation_id,
             "tool": "block_card",
             "bedrock_warning": str(exc)
         }))
-        result["bedrock_response"] = None
+
+
+    # --------------------------------------------------------
+    # Log exitoso
+    # --------------------------------------------------------
 
     logger.info(json.dumps({
         "correlation_id": correlation_id,
@@ -189,4 +478,16 @@ def lambda_handler(event, context):
         "new_status": "BLOCKED"
     }))
 
-    return {"statusCode": 200, "body": result}
+
+    # --------------------------------------------------------
+    # Respuesta para Amazon Connect STRING_MAP
+    # --------------------------------------------------------
+
+    return connect_response(
+        success=True,
+        card_id=card_id,
+        previous_status=current_status,
+        new_status="BLOCKED",
+        blocked_at=blocked_at,
+        message=message
+    )
