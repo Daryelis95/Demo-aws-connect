@@ -32,6 +32,10 @@ module "iam" {
   aws_account_id     = local.aws_account_id
   dynamodb_table_arn = module.dynamodb.table_arn
   tags               = local.common_tags
+
+  # V3 — necesarios para el rol de create-fraud-case
+  cases_domain_id               = var.cases_domain_id
+  customer_profiles_domain_name = var.customer_profiles_domain_name
 }
 
 # ------------------------------------------------------------------
@@ -46,7 +50,15 @@ module "lambda" {
   lambda_execution_role_arn = module.iam.lambda_execution_role_arn
   dynamodb_table_name       = module.dynamodb.table_name
   log_retention_days        = var.log_retention_days
+  bedrock_model_id          = var.bedrock_model_id   # fix: antes no se pasaba al módulo
   tags                      = local.common_tags
+
+  # V3 — variables para la Lambda create-fraud-case
+  cases_domain_id               = var.cases_domain_id
+  cases_template_id             = var.cases_template_id
+  cases_field_ids               = var.cases_field_ids
+  customer_profiles_domain_name = var.customer_profiles_domain_name
+  create_fraud_case_role_arn    = module.iam.create_fraud_case_role_arn
 
   depends_on = [module.iam, module.dynamodb]
 }
@@ -106,6 +118,12 @@ module "connect" {
   get_transactions_lambda_arn        = module.lambda.get_transactions_arn
   block_card_lambda_arn              = module.lambda.block_card_arn
   tags                               = local.common_tags
+
+  # V3 — Amazon Connect Cases
+  fraud_queue_name             = var.fraud_queue_name
+  banking_lex_bot_alias_arn    = var.banking_lex_bot_alias_arn
+  create_fraud_case_lambda_arn = module.lambda.create_fraud_case_arn
+  enable_banking_v3_flow       = var.enable_banking_v3_flow
 
   depends_on = [module.lambda]
 }

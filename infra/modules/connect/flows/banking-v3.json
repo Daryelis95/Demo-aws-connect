@@ -1,0 +1,513 @@
+{
+  "Version": "2019-10-30",
+  "StartAction": "Habilitar Logs Debug",
+  "Metadata": {
+    "entryPointPosition": { "x": -668.8, "y": -18.4 },
+    "ActionMetadata": {
+      "Habilitar Logs Debug":             { "position": { "x": -480,    "y": -19.2  }, "isFriendlyName": true },
+      "voice_assignation":                { "position": { "x": -216.8,  "y": -35.2  }, "isFriendlyName": true },
+      "voice_assignation-lang":           { "position": { "x": -216.8,  "y": 60.0   }, "isFriendlyName": true, "dynamicParams": [] },
+      "Configurar Idioma Lex":            { "position": { "x": -235.2,  "y": -254.4 }, "isFriendlyName": true, "dynamicParams": [] },
+      "Bienvenida y Obtener Entrada":     { "position": { "x": 31.2,    "y": -324.8 }, "isFriendlyName": true },
+      "Reintento":                        { "position": { "x": 286.4,   "y": -313.6 }, "isFriendlyName": true },
+      "Transferencia":                    { "position": { "x": 516.0,   "y": -309.6 }, "isFriendlyName": true },
+      "Get Transactions":                 { "position": { "x": 43.2,    "y": -14.4  }, "isFriendlyName": true },
+      "Guardar Respuesta Lambda":         { "position": { "x": 487.2,   "y": -29.6  }, "isFriendlyName": true },
+      "Validar Respuesta Lambda":         { "position": { "x": 759.2,   "y": 75.2   }, "isFriendlyName": true },
+      "Validar Transaccion Sospechosa":   { "position": { "x": 1020.8,  "y": 77.6   }, "isFriendlyName": true },
+      "Presentar Compra Sospechosa":      { "position": { "x": 1304.0,  "y": 111.2  }, "isFriendlyName": true },
+      "Confirmar Reconocimiento Compra":  { "position": { "x": -245.6,  "y": 211.2  }, "isFriendlyName": true },
+      "Confirmar Compra Reconocida":      { "position": { "x": -246.4,  "y": 530.4  }, "isFriendlyName": true },
+      "Iniciar Bloqueo Tarjeta":          { "position": { "x": 293.6,   "y": 367.2  }, "isFriendlyName": true },
+      "Ejecutar Bloqueo de Tarjeta":      { "position": { "x": 596.0,   "y": 368.8  }, "isFriendlyName": true },
+      "Verificar Estado Tarjeta":         { "position": { "x": 957.6,   "y": 399.2  }, "isFriendlyName": true },
+      "Guardar Resultado Bloqueo":        { "position": { "x": 957.6,   "y": 580.0  }, "isFriendlyName": true },
+      "No Bloquear Tarjeta":              { "position": { "x": 269.6,   "y": 808.0  }, "isFriendlyName": true },
+      "Guardar No Bloqueo":               { "position": { "x": 269.6,   "y": 940.0  }, "isFriendlyName": true },
+      "Ejecutar Create Fraud Case":       { "position": { "x": 1200.0,  "y": 580.0  }, "isFriendlyName": true },
+      "Guardar Datos Caso":               { "position": { "x": 1200.0,  "y": 750.0  }, "isFriendlyName": true },
+      "Verificar Caso Creado":            { "position": { "x": 1200.0,  "y": 900.0  }, "isFriendlyName": true },
+      "Guardar Contexto Agente Fraud":    { "position": { "x": 975.2,   "y": 648.8  }, "isFriendlyName": true, "dynamicParams": [] },
+      "Mensaje Bloqueo Exitoso Con Caso": { "position": { "x": 1161.6,  "y": 906.4  }, "isFriendlyName": true },
+      "Mensaje Bloqueo Exitoso Sin Caso": { "position": { "x": 1161.6,  "y": 1060.0 }, "isFriendlyName": true },
+      "Establecer cola de trabajo":       { "position": { "x": 700.8,   "y": 880.0  }, "isFriendlyName": true },
+      "Mensaje Error General":            { "position": { "x": 184.8,   "y": 1016.8 }, "isFriendlyName": true },
+      "transfer-queue":                   { "position": { "x": 710.4,   "y": 1171.2 } },
+      "end":                              { "position": { "x": -248.8,  "y": 865.6  } }
+    },
+    "Annotations": [],
+    "name": "connect-demo-banking-sandbox-banking-flow-v3",
+    "description": "Contact flow V3: fraude bancario con expediente en Amazon Connect Cases.",
+    "type": "contactFlow",
+    "status": "SAVED",
+    "hash": {}
+  },
+  "Actions": [
+
+    {
+      "Parameters": { "FlowLoggingBehavior": "Enabled" },
+      "Identifier": "Habilitar Logs Debug",
+      "Type": "UpdateFlowLoggingBehavior",
+      "Transitions": { "NextAction": "voice_assignation" }
+    },
+
+    {
+      "Parameters": { "TextToSpeechVoice": "Mia" },
+      "Identifier": "voice_assignation",
+      "Type": "UpdateContactTextToSpeechVoice",
+      "Transitions": {
+        "NextAction": "voice_assignation-lang",
+        "Errors": [{ "NextAction": "Mensaje Error General", "ErrorType": "NoMatchingError" }]
+      }
+    },
+
+    {
+      "Parameters": { "LanguageCode": "es-MX" },
+      "Identifier": "voice_assignation-lang",
+      "Type": "UpdateContactData",
+      "Transitions": {
+        "NextAction": "Configurar Idioma Lex",
+        "Errors": [{ "NextAction": "Mensaje Error General", "ErrorType": "NoMatchingError" }]
+      }
+    },
+
+    {
+      "Parameters": {
+        "TargetContact": "Current",
+        "LanguageCode": "es-419"
+      },
+      "Identifier": "Configurar Idioma Lex",
+      "Type": "UpdateContactData",
+      "Transitions": {
+        "NextAction": "Bienvenida y Obtener Entrada",
+        "Errors": [{ "NextAction": "Mensaje Error General", "ErrorType": "NoMatchingError" }]
+      }
+    },
+
+    {
+      "Parameters": {
+        "Text": "Bienvenido al Banco Demo. Te ayudaremos a revisar tus movimientos y registrar tu reporte. ¿En qué podemos ayudarte?",
+        "LexV2Bot": { "AliasArn": "${lex_bot_alias_arn}" }
+      },
+      "Identifier": "Bienvenida y Obtener Entrada",
+      "Type": "ConnectParticipantWithLexBot",
+      "Transitions": {
+        "NextAction": "Mensaje Error General",
+        "Conditions": [
+          { "NextAction": "Get Transactions", "Condition": { "Operator": "Equals", "Operands": ["ReportFraud"] } }
+        ],
+        "Errors": [
+          { "NextAction": "Reintento",          "ErrorType": "NoMatchingCondition" },
+          { "NextAction": "Mensaje Error General", "ErrorType": "NoMatchingError" }
+        ]
+      }
+    },
+
+    {
+      "Parameters": {
+        "Text": "No entiendo tu consulta. ¿Deseas reportar un movimiento no reconocido en tu tarjeta?",
+        "LexV2Bot": { "AliasArn": "${lex_bot_alias_arn}" }
+      },
+      "Identifier": "Reintento",
+      "Type": "ConnectParticipantWithLexBot",
+      "Transitions": {
+        "NextAction": "Mensaje Error General",
+        "Conditions": [
+          { "NextAction": "Get Transactions", "Condition": { "Operator": "Equals", "Operands": ["ReportFraud"] } }
+        ],
+        "Errors": [
+          { "NextAction": "Transferencia",      "ErrorType": "NoMatchingCondition" },
+          { "NextAction": "Mensaje Error General", "ErrorType": "NoMatchingError" }
+        ]
+      }
+    },
+
+    {
+      "Parameters": {
+        "SkipWhenDTMFBufferEnabled": "false",
+        "Text": "No logramos comprender tu solicitud. Te transferiremos con un especialista para poder ayudarte."
+      },
+      "Identifier": "Transferencia",
+      "Type": "MessageParticipant",
+      "Transitions": {
+        "NextAction": "Establecer cola de trabajo",
+        "Errors": [{ "NextAction": "Establecer cola de trabajo", "ErrorType": "NoMatchingError" }]
+      }
+    },
+
+    {
+      "Parameters": {
+        "LambdaFunctionARN": "${get_transactions_lambda_arn}",
+        "InvocationTimeLimitSeconds": "8",
+        "InvocationType": "SYNCHRONOUS",
+        "LambdaInvocationAttributes": {
+          "action":      "getTransactions",
+          "customer_id": "$.Attributes.customer_id"
+        },
+        "ResponseValidation": { "ResponseType": "STRING_MAP" }
+      },
+      "Identifier": "Get Transactions",
+      "Type": "InvokeLambdaFunction",
+      "Transitions": {
+        "NextAction": "Guardar Respuesta Lambda",
+        "Errors": [{ "NextAction": "Mensaje Error General", "ErrorType": "NoMatchingError" }]
+      }
+    },
+
+    {
+      "Parameters": {
+        "Attributes": {
+          "customer_name":  "$.External.customerName",
+          "account_id":     "$.External.accountId",
+          "card_id":        "$.External.cardId",
+          "card_last4":     "$.External.cardLast4",
+          "card_reference": "$.External.cardReference",
+          "merchant":       "$.External.merchant",
+          "amount":         "$.External.amount",
+          "currency":       "$.External.currency",
+          "suspicious":     "$.External.suspicious",
+          "card_status":    "$.External.cardStatus",
+          "transaction_id": "$.External.transactionId",
+          "operation_id":   "$.External.operationId",
+          "success":        "$.External.success"
+        },
+        "TargetContact": "Current"
+      },
+      "Identifier": "Guardar Respuesta Lambda",
+      "Type": "UpdateContactAttributes",
+      "Transitions": {
+        "NextAction": "Validar Respuesta Lambda",
+        "Errors": [{ "NextAction": "Mensaje Error General", "ErrorType": "NoMatchingError" }]
+      }
+    },
+
+    {
+      "Parameters": { "ComparisonValue": "$.Attributes.success" },
+      "Identifier": "Validar Respuesta Lambda",
+      "Type": "Compare",
+      "Transitions": {
+        "NextAction": "Mensaje Error General",
+        "Conditions": [
+          { "NextAction": "Validar Transaccion Sospechosa", "Condition": { "Operator": "Equals", "Operands": ["true"] } }
+        ],
+        "Errors": [{ "NextAction": "Mensaje Error General", "ErrorType": "NoMatchingCondition" }]
+      }
+    },
+
+    {
+      "Parameters": { "ComparisonValue": "$.Attributes.suspicious" },
+      "Identifier": "Validar Transaccion Sospechosa",
+      "Type": "Compare",
+      "Transitions": {
+        "NextAction": "Mensaje Error General",
+        "Conditions": [
+          { "NextAction": "Presentar Compra Sospechosa", "Condition": { "Operator": "Equals", "Operands": ["true"] } }
+        ],
+        "Errors": [{ "NextAction": "Mensaje Error General", "ErrorType": "NoMatchingCondition" }]
+      }
+    },
+
+    {
+      "Parameters": {
+        "SkipWhenDTMFBufferEnabled": "false",
+        "Text": "Encontré un cargo de $.Attributes.amount $.Attributes.currency en $.Attributes.merchant. ¿Reconoces esta operación?"
+      },
+      "Identifier": "Presentar Compra Sospechosa",
+      "Type": "MessageParticipant",
+      "Transitions": {
+        "NextAction": "Confirmar Reconocimiento Compra",
+        "Errors": [{ "NextAction": "Mensaje Error General", "ErrorType": "NoMatchingError" }]
+      }
+    },
+
+    {
+      "Parameters": {
+        "Text": "¿Reconoces esta compra?",
+        "LexV2Bot": { "AliasArn": "${lex_bot_alias_arn}" }
+      },
+      "Identifier": "Confirmar Reconocimiento Compra",
+      "Type": "ConnectParticipantWithLexBot",
+      "Transitions": {
+        "NextAction": "Mensaje Error General",
+        "Conditions": [
+          { "NextAction": "Confirmar Compra Reconocida", "Condition": { "Operator": "Equals", "Operands": ["ConfirmYes"] } },
+          { "NextAction": "Iniciar Bloqueo Tarjeta",     "Condition": { "Operator": "Equals", "Operands": ["ConfirmNo"] } }
+        ],
+        "Errors": [
+          { "NextAction": "Mensaje Error General", "ErrorType": "NoMatchingCondition" },
+          { "NextAction": "Mensaje Error General", "ErrorType": "NoMatchingError" }
+        ]
+      }
+    },
+
+    {
+      "Parameters": {
+        "SkipWhenDTMFBufferEnabled": "false",
+        "Text": "Perfecto. No realizaremos ningún bloqueo sobre tu tarjeta. Gracias por comunicarte con Banco Demo."
+      },
+      "Identifier": "Confirmar Compra Reconocida",
+      "Type": "MessageParticipant",
+      "Transitions": {
+        "NextAction": "end",
+        "Errors": [{ "NextAction": "Mensaje Error General", "ErrorType": "NoMatchingError" }]
+      }
+    },
+
+    {
+      "Parameters": {
+        "Text": "Por seguridad podemos bloquear la tarjeta terminada en $.Attributes.card_last4. ¿Confirmas que deseas bloquearla?",
+        "LexV2Bot": { "AliasArn": "${lex_bot_alias_arn}" }
+      },
+      "Identifier": "Iniciar Bloqueo Tarjeta",
+      "Type": "ConnectParticipantWithLexBot",
+      "Transitions": {
+        "NextAction": "Mensaje Error General",
+        "Conditions": [
+          { "NextAction": "Ejecutar Bloqueo de Tarjeta", "Condition": { "Operator": "Equals", "Operands": ["ConfirmYes"] } },
+          { "NextAction": "No Bloquear Tarjeta",         "Condition": { "Operator": "Equals", "Operands": ["ConfirmNo"] } }
+        ],
+        "Errors": [
+          { "NextAction": "Mensaje Error General", "ErrorType": "NoMatchingCondition" },
+          { "NextAction": "Mensaje Error General", "ErrorType": "NoMatchingError" }
+        ]
+      }
+    },
+
+    {
+      "Parameters": {
+        "LambdaFunctionARN": "${block_card_lambda_arn}",
+        "InvocationTimeLimitSeconds": "7",
+        "InvocationType": "SYNCHRONOUS",
+        "LambdaInvocationAttributes": {
+          "action":       "blockCard",
+          "cardId":       "$.Attributes.card_id",
+          "consent":      "true",
+          "operationId":  "$.Attributes.operation_id"
+        },
+        "ResponseValidation": { "ResponseType": "STRING_MAP" }
+      },
+      "Identifier": "Ejecutar Bloqueo de Tarjeta",
+      "Type": "InvokeLambdaFunction",
+      "Transitions": {
+        "NextAction": "Verificar Estado Tarjeta",
+        "Errors": [{ "NextAction": "Guardar Resultado Bloqueo", "ErrorType": "NoMatchingError" }]
+      }
+    },
+
+    {
+      "Parameters": { "ComparisonValue": "$.External.newStatus" },
+      "Identifier": "Verificar Estado Tarjeta",
+      "Type": "Compare",
+      "Transitions": {
+        "NextAction": "Guardar Resultado Bloqueo",
+        "Conditions": [
+          { "NextAction": "Guardar Resultado Bloqueo", "Condition": { "Operator": "Equals", "Operands": ["BLOCKED"] } }
+        ],
+        "Errors": [{ "NextAction": "Guardar Resultado Bloqueo", "ErrorType": "NoMatchingCondition" }]
+      }
+    },
+
+    {
+      "Parameters": {
+        "Attributes": {
+          "block_result":    "$.External.blockResult",
+          "card_reference":  "$.External.cardReference",
+          "blocked_at":      "$.External.blockedAt",
+          "block_success":   "$.External.success"
+        },
+        "TargetContact": "Current"
+      },
+      "Identifier": "Guardar Resultado Bloqueo",
+      "Type": "UpdateContactAttributes",
+      "Transitions": {
+        "NextAction": "Ejecutar Create Fraud Case",
+        "Errors": [{ "NextAction": "Ejecutar Create Fraud Case", "ErrorType": "NoMatchingError" }]
+      }
+    },
+
+    {
+      "Parameters": {
+        "Attributes": {
+          "block_result":  "NOT_AUTHORIZED",
+          "block_success": "true",
+          "consent":       "false"
+        },
+        "TargetContact": "Current"
+      },
+      "Identifier": "No Bloquear Tarjeta",
+      "Type": "UpdateContactAttributes",
+      "Transitions": {
+        "NextAction": "Guardar No Bloqueo",
+        "Errors": [{ "NextAction": "Guardar No Bloqueo", "ErrorType": "NoMatchingError" }]
+      }
+    },
+
+    {
+      "Parameters": {
+        "SkipWhenDTMFBufferEnabled": "false",
+        "Text": "Entendido. No bloquearemos tu tarjeta. Como indicaste que no reconoces esta compra, registraremos el reporte y te comunicaremos con un especialista."
+      },
+      "Identifier": "Guardar No Bloqueo",
+      "Type": "MessageParticipant",
+      "Transitions": {
+        "NextAction": "Ejecutar Create Fraud Case",
+        "Errors": [{ "NextAction": "Ejecutar Create Fraud Case", "ErrorType": "NoMatchingError" }]
+      }
+    },
+
+    {
+      "Parameters": {
+        "LambdaFunctionARN": "${create_fraud_case_lambda_arn}",
+        "InvocationTimeLimitSeconds": "7",
+        "InvocationType": "SYNCHRONOUS",
+        "LambdaInvocationAttributes": {
+          "customerId":     "$.Attributes.customer_id",
+          "transactionId":  "$.Attributes.transaction_id",
+          "cardReference":  "$.Attributes.card_reference",
+          "blockResult":    "$.Attributes.block_result",
+          "consent":        "$.Attributes.consent",
+          "blockedAt":      "$.Attributes.blocked_at",
+          "operationId":    "$.Attributes.operation_id"
+        },
+        "ResponseValidation": { "ResponseType": "STRING_MAP" }
+      },
+      "Identifier": "Ejecutar Create Fraud Case",
+      "Type": "InvokeLambdaFunction",
+      "Transitions": {
+        "NextAction": "Guardar Datos Caso",
+        "Errors": [{ "NextAction": "Guardar Datos Caso", "ErrorType": "NoMatchingError" }]
+      }
+    },
+
+    {
+      "Parameters": {
+        "Attributes": {
+          "case_id":         "$.External.caseId",
+          "case_created":    "$.External.caseCreated",
+          "contact_linked":  "$.External.contactLinked",
+          "case_success":    "$.External.success"
+        },
+        "TargetContact": "Current"
+      },
+      "Identifier": "Guardar Datos Caso",
+      "Type": "UpdateContactAttributes",
+      "Transitions": {
+        "NextAction": "Verificar Caso Creado",
+        "Errors": [{ "NextAction": "Guardar Contexto Agente Fraud", "ErrorType": "NoMatchingError" }]
+      }
+    },
+
+    {
+      "Parameters": { "ComparisonValue": "$.Attributes.case_success" },
+      "Identifier": "Verificar Caso Creado",
+      "Type": "Compare",
+      "Transitions": {
+        "NextAction": "Guardar Contexto Agente Fraud",
+        "Conditions": [
+          { "NextAction": "Mensaje Bloqueo Exitoso Con Caso", "Condition": { "Operator": "Equals", "Operands": ["true"] } }
+        ],
+        "Errors": [{ "NextAction": "Guardar Contexto Agente Fraud", "ErrorType": "NoMatchingCondition" }]
+      }
+    },
+
+    {
+      "Parameters": {
+        "SkipWhenDTMFBufferEnabled": "false",
+        "Text": "Tu tarjeta terminada en $.Attributes.card_last4 fue bloqueada. Tu número de referencia del reporte es $.Attributes.case_id. Te comunicamos con un especialista para continuar."
+      },
+      "Identifier": "Mensaje Bloqueo Exitoso Con Caso",
+      "Type": "MessageParticipant",
+      "Transitions": {
+        "NextAction": "Guardar Contexto Agente Fraud",
+        "Errors": [{ "NextAction": "Guardar Contexto Agente Fraud", "ErrorType": "NoMatchingError" }]
+      }
+    },
+
+    {
+      "Parameters": {
+        "SkipWhenDTMFBufferEnabled": "false",
+        "Text": "Tu tarjeta terminada en $.Attributes.card_last4 fue bloqueada. Tu reporte quedó registrado. Te comunicamos con un especialista para continuar."
+      },
+      "Identifier": "Mensaje Bloqueo Exitoso Sin Caso",
+      "Type": "MessageParticipant",
+      "Transitions": {
+        "NextAction": "Guardar Contexto Agente Fraud",
+        "Errors": [{ "NextAction": "Guardar Contexto Agente Fraud", "ErrorType": "NoMatchingError" }]
+      }
+    },
+
+    {
+      "Parameters": {
+        "Attributes": {
+          "journey_type":      "fraud_v3",
+          "transaction_id":    "$.Attributes.transaction_id",
+          "card_reference":    "$.Attributes.card_reference",
+          "block_result":      "$.Attributes.block_result",
+          "case_id":           "$.Attributes.case_id",
+          "case_created":      "$.Attributes.case_created",
+          "contact_linked":    "$.Attributes.contact_linked",
+          "merchant":          "$.Attributes.merchant",
+          "amount":            "$.Attributes.amount",
+          "currency":          "$.Attributes.currency",
+          "operation_id":      "$.Attributes.operation_id",
+          "issue_summary":     "Movimiento $.Attributes.amount $.Attributes.currency no reconocido en $.Attributes.merchant",
+          "action_completed":  "$.Attributes.block_result",
+          "pending_request":   "Proceso de disputa"
+        },
+        "TargetContact": "Current"
+      },
+      "Identifier": "Guardar Contexto Agente Fraud",
+      "Type": "UpdateContactAttributes",
+      "Transitions": {
+        "NextAction": "Establecer cola de trabajo",
+        "Errors": [{ "NextAction": "Establecer cola de trabajo", "ErrorType": "NoMatchingError" }]
+      }
+    },
+
+    {
+      "Parameters": {
+        "QueueId": "${fraud_queue_id}"
+      },
+      "Identifier": "Establecer cola de trabajo",
+      "Type": "UpdateContactTargetQueue",
+      "Transitions": {
+        "NextAction": "transfer-queue",
+        "Errors": [{ "NextAction": "Mensaje Error General", "ErrorType": "NoMatchingError" }]
+      }
+    },
+
+    {
+      "Parameters": {},
+      "Identifier": "transfer-queue",
+      "Type": "TransferContactToQueue",
+      "Transitions": {
+        "NextAction": "end",
+        "Errors": [
+          { "NextAction": "Mensaje Error General", "ErrorType": "QueueAtCapacity" },
+          { "NextAction": "end",                   "ErrorType": "NoMatchingError" }
+        ]
+      }
+    },
+
+    {
+      "Parameters": {
+        "SkipWhenDTMFBufferEnabled": "false",
+        "Text": "Estamos teniendo un inconveniente técnico para procesar tu solicitud. Te transferiremos con un especialista para poder ayudarte."
+      },
+      "Identifier": "Mensaje Error General",
+      "Type": "MessageParticipant",
+      "Transitions": {
+        "NextAction": "Establecer cola de trabajo",
+        "Errors": [{ "NextAction": "Establecer cola de trabajo", "ErrorType": "NoMatchingError" }]
+      }
+    },
+
+    {
+      "Parameters": {},
+      "Identifier": "end",
+      "Type": "DisconnectParticipant",
+      "Transitions": {}
+    }
+
+  ]
+}

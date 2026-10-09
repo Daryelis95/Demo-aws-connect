@@ -48,10 +48,44 @@ variable "retail_queue_name" {
 }
 
 variable "banking_queue_name" {
-  description = "Nombre de la cola para el dominio Banca."
+  description = "Nombre de la cola para el dominio Banca (flujos legacy)."
   type        = string
   default     = "BankingQueue"
 }
+
+# V3 ---------------------------------------------------------------
+variable "fraud_queue_name" {
+  description = "Nombre de la cola de alta prioridad para reportes de fraude (V3)."
+  type        = string
+  default     = "FraudQueue"
+}
+
+variable "banking_lex_bot_alias_arn" {
+  description = <<-EOT
+    ARN del alias activo de BankingFraudBot (Lex V2).
+    Formato: arn:aws:lex:<region>:<account>:bot-alias/<botId>/<aliasId>
+    Ejemplo del sandbox: arn:aws:lex:us-east-1:063103265536:bot-alias/NXHHCKVHHM/ZSII5DJKMX
+    Este recurso vive fuera de Terraform (creado manualmente). No modificar el bot
+    sin exportar su versión primero.
+  EOT
+  type        = string
+}
+
+variable "create_fraud_case_lambda_arn" {
+  description = "ARN de la Lambda create-fraud-case (V3). Se crea con el módulo lambda."
+  type        = string
+}
+
+variable "enable_banking_v3_flow" {
+  description = <<-EOT
+    Controla si se despliega el Contact Flow banking-v3.
+    true  → crea aws_connect_contact_flow.banking_v3[0]
+    false → destruye el recurso (el flujo v2 sigue activo en la consola).
+  EOT
+  type        = bool
+  default     = true
+}
+# ------------------------------------------------------------------
 
 variable "agent_username" {
   description = "Username del agente humano creado en la instancia Connect."

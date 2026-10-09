@@ -1,14 +1,20 @@
-# Copiar este archivo a terraform.tfvars y ajustar los valores.
-# NUNCA versionar terraform.tfvars si contiene valores sensibles.
+# =============================================================================
+# terraform.tfvars.example
+# Copiar a terraform.tfvars y completar los valores.
+# NUNCA versionar terraform.tfvars — está en .gitignore.
+# =============================================================================
 
+# -----------------------------------------------------------------------------
+# Infraestructura base
+# -----------------------------------------------------------------------------
 aws_region             = "us-east-1"
-project_name           = "connect-demo"
+project_name           = "connect-demo-banking"
 environment            = "sandbox"
 
 # Debe ser único globalmente en AWS
-connect_instance_alias = "connect-demo-sandbox"
+connect_instance_alias = "connect-demo-sandbox-banking"
 
-bedrock_model_id       = "anthropic.claude-3-sonnet-20240229-v1:0"
+bedrock_model_id       = "us.anthropic.claude-3-5-haiku-20241022-v1:0"
 
 retail_queue_name      = "RetailQueue"
 banking_queue_name     = "BankingQueue"
@@ -19,3 +25,52 @@ log_retention_days     = 7
 alarm_email            = ""
 
 agent_username         = "demo-agent"
+
+# -----------------------------------------------------------------------------
+# V3 — Amazon Connect Cases
+# Completar con los valores reales obtenidos en la Fase A (consola).
+# Ver instrucciones en .kiro/v3-cases-fraude-bancario.md §4.
+# -----------------------------------------------------------------------------
+
+# Cola de fraude (se crea en Terraform, el nombre debe ser único en la instancia)
+fraud_queue_name = "FraudQueue"
+
+# true  → despliega el flujo banking-v3
+# false → deshabilita sin destruir (rollback rápido)
+enable_banking_v3_flow = true
+
+# ARN del alias activo de BankingFraudBot (Lex V2, fuera de Terraform).
+# Obtener con:
+#   aws lexv2-models list-bot-aliases --bot-id NXHHCKVHHM \
+#     --query "botAliasSummaries[?botAliasName=='SandboxBanking'].{id:botAliasId,status:botAliasStatus}"
+banking_lex_bot_alias_arn = "arn:aws:lex:us-east-1:063103265536:bot-alias/NXHHCKVHHM/ZSII5DJKMX"
+
+# ID del dominio Cases (Fase A §4.2 — creado en consola, luego asociado a la instancia).
+# Obtener con:
+#   aws connectcases list-domains
+cases_domain_id = "<COMPLETAR-cases-domain-id>"
+
+# ID de la plantilla "Reporte de fraude bancario" (Fase A §4.4).
+# Obtener con:
+#   aws connectcases list-templates --domain-id <cases_domain_id>
+cases_template_id = "<COMPLETAR-cases-template-id>"
+
+# Mapa de nombre lógico → fieldId real en el dominio Cases (Fase A §4.4).
+# Obtener con:
+#   aws connectcases list-fields --domain-id <cases_domain_id>
+# Completar cada valor con el UUID que devuelve la API.
+cases_field_ids = {
+  customerId     = "<COMPLETAR-fieldId-customerId>"
+  transactionId  = "<COMPLETAR-fieldId-transactionId>"
+  cardReference  = "<COMPLETAR-fieldId-cardReference>"
+  blockResult    = "<COMPLETAR-fieldId-blockResult>"
+  blockedAt      = "<COMPLETAR-fieldId-blockedAt>"
+  consent        = "<COMPLETAR-fieldId-consent>"
+  operationId    = "<COMPLETAR-fieldId-operationId>"
+  priority       = "<COMPLETAR-fieldId-priority>"
+  contactId      = "<COMPLETAR-fieldId-contactId>"
+}
+
+# Nombre del dominio de Customer Profiles asociado a la instancia.
+# Ver en Connect > instancia > Customer Profiles.
+customer_profiles_domain_name = "<COMPLETAR-customer-profiles-domain-name>"

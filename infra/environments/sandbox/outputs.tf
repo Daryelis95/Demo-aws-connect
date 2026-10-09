@@ -49,8 +49,18 @@ output "retail_contact_flow_id" {
 }
 
 output "banking_contact_flow_id" {
-  description = "ID del Contact Flow de Banca."
+  description = "ID del Contact Flow de Banca (original)."
   value       = module.connect.banking_contact_flow_id
+}
+
+output "banking_v3_contact_flow_id" {
+  description = "ID del Contact Flow de Banca V3 (Cases). Null si enable_banking_v3_flow = false."
+  value       = module.connect.banking_v3_contact_flow_id
+}
+
+output "fraud_queue_id" {
+  description = "ID de la cola FraudQueue (V3)."
+  value       = module.connect.fraud_queue_id
 }
 
 output "cloudwatch_dashboard_name" {

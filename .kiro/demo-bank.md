@@ -107,7 +107,7 @@ terraform version
 python3 --version
 
 # Verificar identidad de AWS
-aws sts get-caller-identity
+aws sts get-caller-identity --profile sandbox
 ```
 
 ---
