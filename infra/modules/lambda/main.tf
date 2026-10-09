@@ -23,6 +23,12 @@ locals {
       description = "Bloquea una tarjeta bancaria ante fraude, robo o pérdida (Banca)."
       source_dir  = "${path.root}/../../../src/tools/block_card"
     }
+    create-fraud-case = {
+      handler     = "handler.lambda_handler"
+      description = "Crea un expediente de fraude en Amazon Connect Cases y lo vincula al contacto (Banca V3)."
+      source_dir  = "${path.root}/../../../src/tools/create_fraud_case"
+      extra_env   = true
+    }
   }
 }
 
@@ -45,7 +51,7 @@ resource "aws_lambda_function" "tool" {
 
   function_name = "${local.prefix}-${each.key}"
   description   = each.value.description
-  role          = var.lambda_execution_role_arn
+  role          = (each.key == "create-fraud-case" && var.create_fraud_case_role_arn != "") ? var.create_fraud_case_role_arn : var.lambda_execution_role_arn
   handler       = each.value.handler
   runtime       = var.python_runtime
   timeout       = var.lambda_timeout
@@ -55,13 +61,21 @@ resource "aws_lambda_function" "tool" {
   source_code_hash = data.archive_file.lambda_zip[each.key].output_base64sha256
 
   environment {
-    variables = {
-      DYNAMODB_TABLE_NAME = var.dynamodb_table_name
-      ENVIRONMENT         = var.environment
-      LOG_LEVEL           = var.log_level
-      AWS_REGION_NAME     = var.aws_region
-      BEDROCK_MODEL_ID    = var.bedrock_model_id
-    }
+    variables = merge(
+      {
+        DYNAMODB_TABLE_NAME = var.dynamodb_table_name
+        ENVIRONMENT         = var.environment
+        LOG_LEVEL           = var.log_level
+        AWS_REGION_NAME     = var.aws_region
+        BEDROCK_MODEL_ID    = var.bedrock_model_id
+      },
+      lookup(each.value, "extra_env", false) ? {
+        CASES_DOMAIN_ID              = var.cases_domain_id
+        CASES_TEMPLATE_ID            = var.cases_template_id
+        CASES_FIELD_IDS              = var.cases_field_ids
+        CUSTOMER_PROFILES_DOMAIN     = var.customer_profiles_domain_name
+      } : {}
+    )
   }
 
   depends_on = [aws_cloudwatch_log_group.lambda]

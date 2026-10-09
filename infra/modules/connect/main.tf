@@ -102,14 +102,8 @@ resource "aws_connect_security_profile" "agent" {
     "Cases.View",
     "Cases.Edit",
     "Cases.Create",
-    # Historial de auditoría de Cases
-    "Cases.AuditHistory.View",
     # Customer Profiles — ver
-    "CustomerProfiles.View",
-    # Ver colas, usuarios y quick-connects (necesario para asignar casos)
-    "Queue.View",
-    "User.View",
-    "QuickConnect.View"
+    "CustomerProfiles.View"
   ]
 
   tags = var.tags
@@ -303,11 +297,35 @@ resource "aws_connect_contact_flow" "banking_v3" {
     block_card_lambda_arn        = var.block_card_lambda_arn
     create_fraud_case_lambda_arn = var.create_fraud_case_lambda_arn
     fraud_queue_id               = aws_connect_queue.fraud.queue_id
+    fraud_queue_flow_id          = aws_connect_contact_flow.fraud_queue_flow[0].id
   })
 
   tags = merge(var.tags, {
     Domain  = "BANKING"
     Version = "v3"
     UseCase = "FRAUD_CASES"
+  })
+}
+
+# ------------------------------------------------------------------
+# Customer Queue Flow — Cola de Fraude (en español)
+# Reemplaza el mensaje de espera en inglés del sistema por defecto.
+# Se asocia a la FraudQueue para que el cliente escuche mensajes
+# en español mientras espera al agente.
+# ------------------------------------------------------------------
+resource "aws_connect_contact_flow" "fraud_queue_flow" {
+  count = var.enable_banking_v3_flow ? 1 : 0
+
+  instance_id = aws_connect_instance.main.id
+  name        = "${local.prefix}-fraud-queue-flow"
+  description = "Flujo de cola para reportes de fraude. Mensajes de espera en español."
+  type        = "CUSTOMER_QUEUE"
+
+  content = file("${path.module}/flows/fraud_customer_queue.json")
+
+  tags = merge(var.tags, {
+    Domain  = "BANKING"
+    Version = "v3"
+    UseCase = "FRAUD_QUEUE"
   })
 }

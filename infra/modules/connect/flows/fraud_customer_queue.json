@@ -1,0 +1,54 @@
+{
+  "Version": "2019-10-30",
+  "StartAction": "Mensaje Espera",
+  "Metadata": {
+    "entryPointPosition": { "x": 0, "y": 0 },
+    "ActionMetadata": {
+      "Mensaje Espera":    { "position": { "x": 200, "y": 40 }, "isFriendlyName": true },
+      "Mensaje Espera 2":  { "position": { "x": 400, "y": 40 }, "isFriendlyName": true },
+      "end":               { "position": { "x": 600, "y": 40 } }
+    },
+    "Annotations": [],
+    "name": "connect-demo-banking-sandbox-fraud-queue-flow",
+    "description": "Flujo de cola para reportes de fraude. Mensajes de espera en español.",
+    "type": "customerQueue",
+    "status": "SAVED",
+    "hash": {}
+  },
+  "Actions": [
+
+    {
+      "Parameters": {
+        "SkipWhenDTMFBufferEnabled": "false",
+        "Text": "Gracias por comunicarte con el área de seguridad del Banco Demo. Un especialista en fraude atenderá tu llamada en breve. Por favor, no cuelgues."
+      },
+      "Identifier": "Mensaje Espera",
+      "Type": "MessageParticipant",
+      "Transitions": {
+        "NextAction": "Mensaje Espera 2",
+        "Errors": [{ "NextAction": "end", "ErrorType": "NoMatchingError" }]
+      }
+    },
+
+    {
+      "Parameters": {
+        "SkipWhenDTMFBufferEnabled": "false",
+        "Text": "Seguimos buscando un especialista disponible para atenderte. Tu reporte de fraude es importante para nosotros. Por favor, continúa en línea."
+      },
+      "Identifier": "Mensaje Espera 2",
+      "Type": "MessageParticipant",
+      "Transitions": {
+        "NextAction": "end",
+        "Errors": [{ "NextAction": "end", "ErrorType": "NoMatchingError" }]
+      }
+    },
+
+    {
+      "Parameters": {},
+      "Identifier": "end",
+      "Type": "DisconnectParticipant",
+      "Transitions": {}
+    }
+
+  ]
+}

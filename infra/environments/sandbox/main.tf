@@ -64,6 +64,28 @@ module "lambda" {
 }
 
 # ------------------------------------------------------------------
+# Política inline: connect:DescribeContact para create-fraud-case
+# Permite leer datos del contacto activo desde el flujo de Connect
+# ------------------------------------------------------------------
+resource "aws_iam_role_policy" "create_fraud_case_describe_contact" {
+  name = "${var.project_name}-${var.environment}-describe-contact"
+  role = module.iam.create_fraud_case_role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["connect:DescribeContact"]
+        Resource = "${module.connect.instance_arn}/contact/*"
+      }
+    ]
+  })
+
+  depends_on = [module.iam, module.connect]
+}
+
+# ------------------------------------------------------------------
 # Módulo: Observabilidad (CloudWatch, alarmas, dashboard)
 # ------------------------------------------------------------------
 module "observability" {
@@ -76,6 +98,10 @@ module "observability" {
   enable_dashboard   = true
   alarm_email        = var.alarm_email
   tags               = local.common_tags
+
+  # Los metric filters de create-fraud-case necesitan que el log group
+  # exista primero — ese log group lo crea el módulo lambda.
+  depends_on = [module.lambda]
 }
 
 # ------------------------------------------------------------------

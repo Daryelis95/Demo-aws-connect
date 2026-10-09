@@ -5,8 +5,18 @@ locals {
     "${local.prefix}-get-order",
     "${local.prefix}-change-delivery-address",
     "${local.prefix}-get-transactions",
-    "${local.prefix}-block-card"
+    "${local.prefix}-block-card",
+    "${local.prefix}-create-fraud-case"
   ]
+
+  fraud_case_log_group = "/aws/lambda/${local.prefix}-create-fraud-case"
+
+  fraud_metric_filters = {
+    case_created        = { pattern = "{ $.event = \"case_created\" }",        description = "Casos de fraude creados exitosamente." }
+    case_reused         = { pattern = "{ $.event = \"case_reused\" }",         description = "Casos reutilizados por deduplicación." }
+    case_create_failed  = { pattern = "{ $.event = \"case_create_failed\" }",  description = "Fallos al crear el caso de fraude." }
+    contact_link_failed = { pattern = "{ $.event = \"contact_link_failed\" }", description = "Fallos al vincular el contacto al caso." }
+  }
 }
 
 # ------------------------------------------------------------------
@@ -153,4 +163,47 @@ resource "aws_cloudwatch_log_group" "connect" {
   name              = "/connect-demo/${local.prefix}/connect"
   retention_in_days = var.log_retention_days
   tags              = var.tags
+}
+
+# ------------------------------------------------------------------
+# Metric Filters — eventos de negocio de create-fraud-case
+# Cada filtro extrae un contador del campo "event" en los logs JSON
+# ------------------------------------------------------------------
+
+resource "aws_cloudwatch_log_metric_filter" "fraud_case" {
+  for_each = local.fraud_metric_filters
+
+  name           = "${local.prefix}-fraud-${each.key}"
+  log_group_name = local.fraud_case_log_group
+  pattern        = each.value.pattern
+
+  metric_transformation {
+    name          = each.key
+    namespace     = "${local.prefix}/FraudCase"
+    value         = "1"
+    default_value = "0"
+    unit          = "Count"
+  }
+}
+
+# ------------------------------------------------------------------
+# Alarma: case_create_failed > 0 en ventana de 5 minutos → SNS
+# ------------------------------------------------------------------
+resource "aws_cloudwatch_metric_alarm" "case_create_failed" {
+  alarm_name          = "${local.prefix}-case-create-failed"
+  alarm_description   = "Se produjo al menos un fallo al crear un caso de fraude en los últimos 5 minutos."
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 1
+  metric_name         = "case_create_failed"
+  namespace           = "${local.prefix}/FraudCase"
+  period              = 300
+  statistic           = "Sum"
+  threshold           = 0
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions = [aws_sns_topic.alarms.arn]
+
+  tags = var.tags
+
+  depends_on = [aws_cloudwatch_log_metric_filter.fraud_case]
 }

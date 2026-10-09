@@ -64,3 +64,37 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+# -----------------------------------------------------------------------
+# Variables para create-fraud-case (Amazon Connect Cases + Customer Profiles)
+# -----------------------------------------------------------------------
+
+variable "cases_domain_id" {
+  description = "ID del dominio de Amazon Connect Cases."
+  type        = string
+  default     = ""
+}
+
+variable "cases_template_id" {
+  description = "ID de la plantilla de casos en Connect Cases."
+  type        = string
+  default     = ""
+}
+
+variable "cases_field_ids" {
+  description = "JSON con el mapa de nombre de campo → fieldId en Connect Cases."
+  type        = string
+  default     = "{}"
+}
+
+variable "customer_profiles_domain_name" {
+  description = "Nombre del dominio de Amazon Connect Customer Profiles."
+  type        = string
+  default     = ""
+}
+
+variable "create_fraud_case_role_arn" {
+  description = "ARN del rol IAM exclusivo para la Lambda create-fraud-case. Si se proporciona, sobreescribe el rol compartido solo para esa función."
+  type        = string
+  default     = ""
+}

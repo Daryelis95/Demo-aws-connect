@@ -28,3 +28,19 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+# -----------------------------------------------------------------------
+# Variables para el rol de create-fraud-case
+# -----------------------------------------------------------------------
+
+variable "cases_domain_id" {
+  description = "ID del dominio de Amazon Connect Cases. Usado para limitar el scope IAM."
+  type        = string
+  default     = ""
+}
+
+variable "customer_profiles_domain_name" {
+  description = "Nombre del dominio de Customer Profiles. Usado para limitar el scope IAM."
+  type        = string
+  default     = ""
+}

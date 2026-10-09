@@ -109,13 +109,14 @@ variable "cases_template_id" {
 
 variable "cases_field_ids" {
   description = <<-EOT
-    Mapa de nombre lógico → fieldId real en el dominio Cases.
+    JSON con el mapa de nombre lógico → fieldId real en el dominio Cases.
     Obtener con: aws connectcases list-fields --domain-id <domain-id>
     Claves requeridas: customerId, transactionId, cardReference, blockResult,
                        blockedAt, consent, operationId, priority, contactId.
+    Formato: '{"customerId":"uuid","transactionId":"uuid",...}'
   EOT
-  type        = map(string)
-  default     = {}
+  type        = string
+  default     = "{}"
 }
 
 variable "customer_profiles_domain_name" {

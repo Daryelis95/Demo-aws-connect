@@ -31,3 +31,8 @@ output "block_card_arn" {
   description = "ARN de la Lambda block-card."
   value       = aws_lambda_function.tool["block-card"].arn
 }
+
+output "create_fraud_case_arn" {
+  description = "ARN de la Lambda create-fraud-case."
+  value       = aws_lambda_function.tool["create-fraud-case"].arn
+}
