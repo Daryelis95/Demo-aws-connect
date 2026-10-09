@@ -132,3 +132,13 @@ variable "default_customer_queue_flow_id" {
   description = "ID del flujo 'Default customer queue' de Connect (QueueFlowId para BankingQueue en Escenario A)."
   type        = string
 }
+
+variable "task_template_id" {
+  description = "ID del Task Template 'Seguimiento de Fraude Bancario' en Connect."
+  type        = string
+}
+
+variable "connect_instance_id" {
+  description = "ID de la instancia de Amazon Connect del sandbox."
+  type        = string
+}

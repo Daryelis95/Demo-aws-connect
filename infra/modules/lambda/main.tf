@@ -74,6 +74,8 @@ resource "aws_lambda_function" "tool" {
         CASES_TEMPLATE_ID            = var.cases_template_id
         CASES_FIELD_IDS              = var.cases_field_ids
         CUSTOMER_PROFILES_DOMAIN     = var.customer_profiles_domain_name
+        CONNECT_INSTANCE_ID          = var.connect_instance_id
+        TASK_TEMPLATE_ID             = var.task_template_id
       } : {}
     )
   }

@@ -56,11 +56,14 @@ AWS_REGION = os.getenv("AWS_REGION_NAME", "us-east-1")
 dynamodb         = boto3.resource("dynamodb", region_name=AWS_REGION)
 cases_client     = boto3.client("connectcases", region_name=AWS_REGION)
 profiles_client  = boto3.client("customer-profiles", region_name=AWS_REGION)
+connect_client   = boto3.client("connect", region_name=AWS_REGION)
 
 TABLE_NAME                   = os.environ["DYNAMODB_TABLE_NAME"]
 CASES_DOMAIN_ID              = os.environ["CASES_DOMAIN_ID"]
 CASES_TEMPLATE_ID            = os.environ["CASES_TEMPLATE_ID"]
 CUSTOMER_PROFILES_DOMAIN     = os.environ["CUSTOMER_PROFILES_DOMAIN"]
+CONNECT_INSTANCE_ID          = os.environ.get("CONNECT_INSTANCE_ID", "")
+TASK_TEMPLATE_ID             = os.environ.get("TASK_TEMPLATE_ID", "")
 
 # JSON con el mapa de field_name → fieldId
 # Ejemplo: '{"customerId":"uuid","transactionId":"uuid",...}'
@@ -167,6 +170,60 @@ def search_customer_profile(customer_id):
             "customer_id": customer_id
         }))
     return None
+
+
+def create_followup_task(correlation_id, case_id, customer_id,
+                         transaction_id, card_reference, block_result, operation_id):
+    """
+    Crea una tarea de seguimiento en Amazon Connect vinculada al caso de fraude.
+    No es crítica — si falla, el caso ya fue creado y se loggea el error.
+    Solo se ejecuta si CONNECT_INSTANCE_ID y TASK_TEMPLATE_ID están configurados.
+    """
+    if not CONNECT_INSTANCE_ID or not TASK_TEMPLATE_ID:
+        logger.warning(json.dumps({
+            "event":          "task_skipped_missing_config",
+            "correlation_id": correlation_id
+        }))
+        return False
+
+    # El nombre de la tarea es lo primero que ve el agente en su panel
+    task_name = f"Seguimiento fraude {customer_id} — {card_reference}"
+
+    try:
+        connect_client.start_task_contact(
+            InstanceId=CONNECT_INSTANCE_ID,
+            Name=task_name,
+            TaskTemplateId=TASK_TEMPLATE_ID,
+            Description=(
+                f"Caso: {case_id} | Cliente: {customer_id} | "
+                f"Tarjeta: {card_reference} | Resultado: {block_result} | "
+                f"Operación: {operation_id}"
+            ),
+            Attributes={
+                "name":          task_name,
+                "caseId":        case_id,
+                "customerId":    customer_id,
+                "blockResult":   block_result,
+                "cardReference": card_reference,
+                "operationId":   operation_id
+            }
+        )
+        logger.info(json.dumps({
+            "event":          "followup_task_created",
+            "correlation_id": correlation_id,
+            "case_id":        case_id,
+            "operation_id":   operation_id
+        }))
+        return True
+
+    except Exception as exc:
+        logger.warning(json.dumps({
+            "event":          "followup_task_failed",
+            "correlation_id": correlation_id,
+            "case_id":        case_id,
+            "error":          str(exc)
+        }))
+        return False
 
 
 # ============================================================
@@ -433,6 +490,23 @@ def lambda_handler(event, context):
         "block_result":    block_result,
         "contact_linked":  contact_linked
     }))
+
+    # --------------------------------------------------------
+    # 9. Tarea de seguimiento — no crítica, no bloquea la respuesta
+    # --------------------------------------------------------
+
+    # Solo lanza la tarea cuando hay un bloqueo real o no autorizado.
+    # NOT_APPLICABLE = transacción reconocida → sin tarea de seguimiento.
+    if block_result != "NOT_APPLICABLE":
+        create_followup_task(
+            correlation_id = correlation_id,
+            case_id        = case_id,
+            customer_id    = customer_id,
+            transaction_id = transaction_id,
+            card_reference = card_reference,
+            block_result   = block_result,
+            operation_id   = operation_id
+        )
 
     return connect_response(
         success=True,

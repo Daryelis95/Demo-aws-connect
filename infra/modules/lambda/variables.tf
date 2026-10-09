@@ -98,3 +98,15 @@ variable "create_fraud_case_role_arn" {
   type        = string
   default     = ""
 }
+
+variable "connect_instance_id" {
+  description = "ID de la instancia de Amazon Connect — usado por create-fraud-case para StartTaskContact."
+  type        = string
+  default     = ""
+}
+
+variable "task_template_id" {
+  description = "ID del Task Template 'Seguimiento de Fraude Bancario' en Connect — usado por create-fraud-case."
+  type        = string
+  default     = ""
+}

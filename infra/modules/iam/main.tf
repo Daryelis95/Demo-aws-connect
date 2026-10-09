@@ -281,6 +281,25 @@ resource "aws_iam_policy" "create_fraud_case_dynamodb" {
   tags = var.tags
 }
 
+# Amazon Connect — StartTaskContact para tareas de seguimiento
+resource "aws_iam_policy" "create_fraud_case_tasks" {
+  name        = "${local.prefix}-create-fraud-case-tasks-policy"
+  description = "Permite a create-fraud-case crear tareas de seguimiento en Connect."
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = ["connect:StartTaskContact"]
+        Resource = "arn:aws:connect:${var.aws_region}:${var.aws_account_id}:instance/*"
+      }
+    ]
+  })
+
+  tags = var.tags
+}
+
 # Amazon Connect Cases — operaciones mínimas
 resource "aws_iam_policy" "create_fraud_case_cases" {
   name        = "${local.prefix}-create-fraud-case-cases-policy"
@@ -348,4 +367,9 @@ resource "aws_iam_role_policy_attachment" "create_fraud_case_cases" {
 resource "aws_iam_role_policy_attachment" "create_fraud_case_profiles" {
   role       = aws_iam_role.create_fraud_case.name
   policy_arn = aws_iam_policy.create_fraud_case_profiles.arn
+}
+
+resource "aws_iam_role_policy_attachment" "create_fraud_case_tasks" {
+  role       = aws_iam_role.create_fraud_case.name
+  policy_arn = aws_iam_policy.create_fraud_case_tasks.arn
 }

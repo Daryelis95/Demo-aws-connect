@@ -59,6 +59,8 @@ module "lambda" {
   cases_field_ids               = var.cases_field_ids
   customer_profiles_domain_name = var.customer_profiles_domain_name
   create_fraud_case_role_arn    = module.iam.create_fraud_case_role_arn
+  connect_instance_id           = var.connect_instance_id
+  task_template_id              = var.task_template_id
 
   depends_on = [module.iam, module.dynamodb]
 }
