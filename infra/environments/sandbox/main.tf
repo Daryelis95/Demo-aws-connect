@@ -150,6 +150,7 @@ module "connect" {
   banking_lex_bot_alias_arn    = var.banking_lex_bot_alias_arn
   create_fraud_case_lambda_arn = module.lambda.create_fraud_case_arn
   enable_banking_v3_flow       = var.enable_banking_v3_flow
+  default_customer_queue_flow_id = var.default_customer_queue_flow_id
 
   depends_on = [module.lambda]
 }

@@ -127,3 +127,8 @@ variable "customer_profiles_domain_name" {
   EOT
   type        = string
 }
+
+variable "default_customer_queue_flow_id" {
+  description = "ID del flujo 'Default customer queue' de Connect (QueueFlowId para BankingQueue en Escenario A)."
+  type        = string
+}

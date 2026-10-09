@@ -298,6 +298,8 @@ resource "aws_connect_contact_flow" "banking_v3" {
     create_fraud_case_lambda_arn = var.create_fraud_case_lambda_arn
     fraud_queue_id               = aws_connect_queue.fraud.queue_id
     fraud_queue_flow_id          = aws_connect_contact_flow.fraud_queue_flow[0].id
+    banking_queue_id             = aws_connect_queue.banking.queue_id
+    banking_queue_flow_id        = var.default_customer_queue_flow_id
   })
 
   tags = merge(var.tags, {

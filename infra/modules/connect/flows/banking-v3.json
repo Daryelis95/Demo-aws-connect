@@ -25,7 +25,12 @@
       "Presentar Compra Sospechosa":      { "position": { "x": 1720,    "y": 160    }, "isFriendlyName": true },
       "Confirmar Reconocimiento Compra":  { "position": { "x": 1920,    "y": 160    }, "isFriendlyName": true },
       "Reintento Reconocimiento":         { "position": { "x": 1920,    "y": 300    }, "isFriendlyName": true },
-      "Confirmar Compra Reconocida":      { "position": { "x": 2120,    "y": 80     }, "isFriendlyName": true },
+      "Confirmar Compra Reconocida":          { "position": { "x": 2120,    "y": 80     }, "isFriendlyName": true },
+      "Guardar Contexto Reconocida":          { "position": { "x": 2320,    "y": 80     }, "isFriendlyName": true, "dynamicParams": [] },
+      "Ejecutar Caso Legitimo":               { "position": { "x": 2520,    "y": 80     }, "isFriendlyName": true },
+      "Guardar Datos Caso Legitimo":          { "position": { "x": 2720,    "y": 80     }, "isFriendlyName": true },
+      "Mensaje Cierre Legitimo":              { "position": { "x": 2920,    "y": 80     }, "isFriendlyName": true },
+      "Establecer Cola Banking":              { "position": { "x": 3120,    "y": 80     }, "isFriendlyName": true },
       "Iniciar Bloqueo Tarjeta":          { "position": { "x": 2120,    "y": 240    }, "isFriendlyName": true },
       "Reintento Bloqueo":                { "position": { "x": 2120,    "y": 380    }, "isFriendlyName": true },
       "Ejecutar Bloqueo de Tarjeta":      { "position": { "x": 2320,    "y": 240    }, "isFriendlyName": true },
@@ -406,10 +411,93 @@
     {
       "Parameters": {
         "SkipWhenDTMFBufferEnabled": "false",
-        "Text": "Perfecto. No realizaremos ningún bloqueo sobre tu tarjeta. Gracias por comunicarte con Banco Demo."
+        "Text": "Gracias por confirmar. Registraremos que reconociste esta operación y quedará documentado en tu expediente."
       },
       "Identifier": "Confirmar Compra Reconocida",
       "Type": "MessageParticipant",
+      "Transitions": {
+        "NextAction": "Guardar Contexto Reconocida",
+        "Errors": [{ "NextAction": "Mensaje Error General", "ErrorType": "NoMatchingError" }]
+      }
+    },
+
+    {
+      "Parameters": {
+        "Attributes": {
+          "block_result":  "NOT_APPLICABLE",
+          "block_success": "true",
+          "consent":       "true",
+          "scenario":      "legitimate"
+        },
+        "TargetContact": "Current"
+      },
+      "Identifier": "Guardar Contexto Reconocida",
+      "Type": "UpdateContactAttributes",
+      "Transitions": {
+        "NextAction": "Ejecutar Caso Legitimo",
+        "Errors": [{ "NextAction": "Ejecutar Caso Legitimo", "ErrorType": "NoMatchingError" }]
+      }
+    },
+
+    {
+      "Parameters": {
+        "LambdaFunctionARN": "${create_fraud_case_lambda_arn}",
+        "InvocationTimeLimitSeconds": "7",
+        "InvocationType": "SYNCHRONOUS",
+        "LambdaInvocationAttributes": {
+          "customerId":    "$.Attributes.customer_id",
+          "transactionId": "$.Attributes.transaction_id",
+          "cardReference": "$.Attributes.card_reference",
+          "blockResult":   "NOT_APPLICABLE",
+          "consent":       "true",
+          "operationId":   "$.Attributes.operation_id"
+        },
+        "ResponseValidation": { "ResponseType": "STRING_MAP" }
+      },
+      "Identifier": "Ejecutar Caso Legitimo",
+      "Type": "InvokeLambdaFunction",
+      "Transitions": {
+        "NextAction": "Guardar Datos Caso Legitimo",
+        "Errors": [{ "NextAction": "Guardar Datos Caso Legitimo", "ErrorType": "NoMatchingError" }]
+      }
+    },
+
+    {
+      "Parameters": {
+        "Attributes": {
+          "case_id":        "$.External.caseId",
+          "case_created":   "$.External.caseCreated",
+          "case_success":   "$.External.success"
+        },
+        "TargetContact": "Current"
+      },
+      "Identifier": "Guardar Datos Caso Legitimo",
+      "Type": "UpdateContactAttributes",
+      "Transitions": {
+        "NextAction": "Mensaje Cierre Legitimo",
+        "Errors": [{ "NextAction": "Mensaje Cierre Legitimo", "ErrorType": "NoMatchingError" }]
+      }
+    },
+
+    {
+      "Parameters": {
+        "SkipWhenDTMFBufferEnabled": "false",
+        "Text": "Tu operación de $.Attributes.amount $.Attributes.currency en $.Attributes.merchant quedó registrada como reconocida. No se realizará ningún bloqueo. Tu número de referencia es $.Attributes.case_id. Que tengas un buen día."
+      },
+      "Identifier": "Mensaje Cierre Legitimo",
+      "Type": "MessageParticipant",
+      "Transitions": {
+        "NextAction": "Establecer Cola Banking",
+        "Errors": [{ "NextAction": "Establecer Cola Banking", "ErrorType": "NoMatchingError" }]
+      }
+    },
+
+    {
+      "Parameters": {
+        "QueueId": "${banking_queue_id}"
+      },
+      "Identifier": "Establecer Cola Banking",
+      "Type": "UpdateContactTargetQueue",
       "Transitions": {
         "NextAction": "end",
         "Errors": [{ "NextAction": "Mensaje Error General", "ErrorType": "NoMatchingError" }]
@@ -667,8 +755,7 @@
 
     {
       "Parameters": {
-        "QueueId":     "${fraud_queue_id}",
-        "QueueFlowId": "${fraud_queue_flow_id}"
+        "QueueId": "${fraud_queue_id}"
       },
       "Identifier": "Establecer cola de trabajo",
       "Type": "UpdateContactTargetQueue",

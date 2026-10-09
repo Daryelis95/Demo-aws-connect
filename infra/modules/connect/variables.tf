@@ -130,3 +130,8 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "default_customer_queue_flow_id" {
+  description = "ID del flujo 'Default customer queue' usado como QueueFlowId para la BankingQueue en el Escenario A (transacción legítima)."
+  type        = string
+}
