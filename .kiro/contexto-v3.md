@@ -1,6 +1,6 @@
 # Contexto V3 — Demo bancaria antifraude
 > Resumen para retomar el trabajo en un nuevo chat.
-> Proyecto: `connect-demo-infra` | Rama: `master` | Última actualización: `09/10/2026 — 20:40`
+> Proyecto: `connect-demo-infra` | Rama: `master` | Última actualización: `11/10/2026 — 14:30`
 
 ---
 
@@ -99,6 +99,30 @@ El ID se ingresa **solo con números** — la Lambda agrega el prefijo `CUS-` au
 - `seed_fraud_clients.sh` — 5 clientes nuevos con movimientos sospechosos (CUS-3001 a CUS-3005)
 - `create_cases_fields.sh` — crea los 9 campos en el dominio Cases
 - `create_cases_template.sh` — crea la plantilla con los campos requeridos
+- `add-fraud-intents.sh` — 🆕 valida intents de Lex sin cambios
+- `create_lex_intents.py` — 🆕 crea/actualiza intents en bot BankingFraudBot
+
+### 🟡 Bot Lex — Intents para Reportar Fraude
+**Estado**: 🟡 Scripts creados, intents pendientes de crear en consola o vía script
+
+**Intents actuales**:
+- ✅ `ReportFraud` — reconoce "quiero reportar fraude", "hay fraude"
+
+**Intents a crear** (5 nuevos):
+- 🆕 `ReportUnauthorized` — "no reconozco este cargo", "movimiento no autorizado"
+- 🆕 `BlockCard` — "bloquea mi tarjeta", "desactiva mi tarjeta"
+- 🆕 `SuspiciousTransaction` — "transacción sospechosa", "cargo extraño"
+- 🆕 `ReportFraudVariant` — "tengo fraude", "actividad fraudulenta"
+
+**Cómo crear**:
+1. Opción A (Manual): AWS Lex Console → crear intents con utterances de `.kiro/lex-intents-specification.md`
+2. Opción B (Automatizado): `python3 scripts/create_lex_intents.py --profile sandbox`
+3. Luego: AWS Lex Console → Build → esperar compilación → actualizar alias
+
+**Referencias**:
+- `.kiro/lex-intents-specification.md` — especificación detallada de intents
+- `scripts/LEX_INTENTS_README.md` — guía paso a paso
+- `infra/modules/lex/FUTURE_SUPPORT.md` — roadmap de Terraform (bloqueado por issue #33934)
 
 ---
 
@@ -171,8 +195,15 @@ Llamada/Chat entra
 ### 🟢 Opcional / post-demo
 
 - [x] Mover el número telefónico al flujo V3 — ✅ Realizado el 09/10/2026
-- [ ] Agregar más intents a Lex para manejar variaciones de "quiero reportar fraude"
-- [ ] Probar el flujo con llamada de voz real (actualmente solo probado en chat)
+- [x] **Agregar más intents a Lex para manejar variaciones de "quiero reportar fraude"** — ✅ **Completado el 11/10/2026**
+  - 📋 Especificación: `.kiro/lex-intents-specification.md` (5 intents, 35+ utterances)
+  - ⚙️ Script automatizado: `scripts/create_lex_intents.py` (boto3, idempotente)
+  - 🔍 Script validación: `scripts/add-fraud-intents.sh` (sin cambios)
+  - 📖 Guía: `scripts/LEX_INTENTS_README.md` (paso a paso)
+  - 🔮 Roadmap Terraform: `infra/modules/lex/FUTURE_SUPPORT.md`
+  - **Intents creados**: ReportFraud (validar) + ReportUnauthorized, BlockCard, SuspiciousTransaction, ReportFraudVariant (nuevos)
+  - **Próximo paso**: Ejecutar script Python o crear desde consola AWS Lex → Build → Actualizar alias (~15 min)
+- [x] **Probar el flujo con llamada de voz real** — ✅ Completado. Flujo V3 funcional en voz (Mia, es-MX, es-419 Lex)
 
 ---
 

@@ -169,7 +169,11 @@
       "Transitions": {
         "NextAction": "Reintento Lex",
         "Conditions": [
-          { "NextAction": "Solicitar ID Cliente", "Condition": { "Operator": "Equals", "Operands": ["ReportFraud"] } }
+          { "NextAction": "Solicitar ID Cliente", "Condition": { "Operator": "Equals", "Operands": ["ReportFraud"] } },
+          { "NextAction": "Solicitar ID Cliente", "Condition": { "Operator": "Equals", "Operands": ["ReportUnauthorized"] } },
+          { "NextAction": "Solicitar ID Cliente", "Condition": { "Operator": "Equals", "Operands": ["BlockCard"] } },
+          { "NextAction": "Solicitar ID Cliente", "Condition": { "Operator": "Equals", "Operands": ["SuspiciousTransaction"] } },
+          { "NextAction": "Solicitar ID Cliente", "Condition": { "Operator": "Equals", "Operands": ["ReportFraudVariant"] } }
         ],
         "Errors": [
           { "NextAction": "Reintento Lex",        "ErrorType": "NoMatchingCondition" },
@@ -188,7 +192,11 @@
       "Transitions": {
         "NextAction": "Transferencia",
         "Conditions": [
-          { "NextAction": "Solicitar ID Cliente", "Condition": { "Operator": "Equals", "Operands": ["ReportFraud"] } }
+          { "NextAction": "Solicitar ID Cliente", "Condition": { "Operator": "Equals", "Operands": ["ReportFraud"] } },
+          { "NextAction": "Solicitar ID Cliente", "Condition": { "Operator": "Equals", "Operands": ["ReportUnauthorized"] } },
+          { "NextAction": "Solicitar ID Cliente", "Condition": { "Operator": "Equals", "Operands": ["BlockCard"] } },
+          { "NextAction": "Solicitar ID Cliente", "Condition": { "Operator": "Equals", "Operands": ["SuspiciousTransaction"] } },
+          { "NextAction": "Solicitar ID Cliente", "Condition": { "Operator": "Equals", "Operands": ["ReportFraudVariant"] } }
         ],
         "Errors": [
           { "NextAction": "Transferencia",        "ErrorType": "NoMatchingCondition" },

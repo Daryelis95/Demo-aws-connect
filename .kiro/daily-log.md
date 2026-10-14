@@ -2,6 +2,35 @@
 
 ---
 
+## 12/10/2026
+
+**Demo bancaria antifraude — Progreso V3**
+- ✅ Número telefónico movido a flujo V3 (completado)
+- 🟡 Intents Lex pendientes: ReportUnauthorized, BlockCard, SuspiciousTransaction, ReportFraudVariant
+- 🟡 Compilación de bot Lex pendiente
+- 🟡 Actualización de alias SandboxBanking pendiente
+- Actualizar contexto-general.md para reflejar progreso
+
+---
+
+## 11/10/2026
+
+**Demo bancaria antifraude — Expansión de Intents de Lex**
+- Crear especificación completa para nuevos intents de fraude en `lex-intents-specification.md`
+- Implementar script de validación: `scripts/add-fraud-intents.sh` (lista intents actuales sin cambios)
+- Implementar script Python con boto3: `scripts/create_lex_intents.py` (crea/actualiza intents en DRAFT)
+- Documentar intents propuestos:
+  - ✅ ReportFraud (existente, validar)
+  - 🆕 ReportUnauthorized (movimiento no autorizado)
+  - 🆕 BlockCard (bloqueo de tarjeta explícito)
+  - 🆕 SuspiciousTransaction (transacción sospechosa)
+  - 🆕 ReportFraudVariant (variaciones de fraude)
+- Crear documento `infra/modules/lex/FUTURE_SUPPORT.md` con plan de soporte en Terraform (actualmente bloqueado por issue #33934)
+- Estrategia: Mapear todos los intents nuevos a "Solicitar ID Cliente" (Opción A - unificada)
+- **Status**: 🟡 Ready para activación - scripts creados, intents documentados, implementación pendiente en consola o vía script Python
+
+---
+
 ## 08/10/2026
 
 **Demo bancaria antifraude**
